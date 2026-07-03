@@ -1,4 +1,23 @@
 // seo-panel.js — Panel de Diagnóstico y Estrategia SEO
+
+function renderSidebar(active) {
+  const items = [
+    { id: 'diagnostico', icon: '\ud83d\udcca', label: 'Diagnóstico', href: '/seo' },
+    { id: 'estrategia', icon: '\ud83c\udfaf', label: 'Estrategia', href: '/seo#estrategia' },
+    { id: 'calendario', icon: '\ud83d\udcc5', label: 'Calendario', href: '/' },
+  ];
+  const linksHtml = items.map(it => {
+    const isActive = active === it.id;
+    return `<a class="nav-item${isActive ? ' active' : ''}" href="${it.href}" data-view="${it.id}">${it.icon} ${it.label}</a>`;
+  }).join('\n    ');
+  return `<div class="sidebar">
+    <h1>\ud83d\ude80 Magenta SEO</h1>
+    ${linksHtml}
+    <div class="nav-item disabled">\ud83d\udce4 Publicación</div>
+    <div style="padding:14px 20px 0"><a href="/" style="font-size:12px">← Volver al panel principal</a></div>
+  </div>`;
+}
+
 function renderSeoPanel() {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -77,14 +96,7 @@ function renderSeoPanel() {
 </head>
 <body>
 <div class="layout">
-  <div class="sidebar">
-    <h1>🚀 Magenta SEO</h1>
-    <div class="nav-item active" data-view="diagnostico">📊 Diagnóstico</div>
-    <div class="nav-item" data-view="estrategia">🎯 Estrategia</div>
-    <div class="nav-item disabled">📅 Calendario</div>
-    <div class="nav-item disabled">📤 Publicación</div>
-    <div style="padding:14px 20px 0"><a href="/" style="font-size:12px">← Volver al panel principal</a></div>
-  </div>
+  ${renderSidebar('diagnostico')}
 
   <div class="main">
 
@@ -201,16 +213,23 @@ function renderSeoPanel() {
 <script>
 // ─── Navegación sidebar ───────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-view]').forEach(item => {
-  item.addEventListener('click', () => {
+  item.addEventListener('click', (e) => {
+    const target = item.dataset.view;
+    if (!document.getElementById('view-' + target)) return;
+    e.preventDefault();
     document.querySelectorAll('.nav-item[data-view]').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
-    const target = item.dataset.view;
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
     document.getElementById('view-' + target).style.display = 'block';
     if (target === 'diagnostico' && !window.__diagCargado) cargarDiagnostico();
     if (target === 'estrategia' && !window.__estrategiaCargada) cargarEstrategia();
   });
 });
+
+if (window.location.hash === '#estrategia') {
+  const estrategiaTab = document.querySelector('.nav-item[data-view="estrategia"]');
+  if (estrategiaTab) estrategiaTab.click();
+}
 
 // ─── DIAGNÓSTICO ───────────────────────────────────────────────────────
 let kwData = [];
@@ -470,4 +489,4 @@ function renderConnectCard() {
 </html>`;
 }
 
-module.exports = { renderSeoPanel, renderConnectCard };
+module.exports = { renderSeoPanel, renderConnectCard, renderSidebar };

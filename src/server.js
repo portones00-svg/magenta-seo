@@ -132,8 +132,16 @@ app.get('/', (req, res) => {
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:"Poppins",sans-serif;background:#f5f5f5;color:#1a1a1a;padding:20px}
+    body{font-family:"Poppins",sans-serif;background:#f5f5f5;color:#1a1a1a}
     .container{max-width:1000px;margin:0 auto}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e5;padding:20px 0;flex-shrink:0}
+    .sidebar h1{font-size:16px;font-weight:600;color:#216416;padding:0 20px 20px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;text-decoration:none}
+    .nav-item:hover{background:#f5f5f5}
+    .nav-item.active{background:#eef6ec;color:#216416;font-weight:500;border-left-color:#216416}
+    .nav-item.disabled{opacity:0.4;cursor:not-allowed}
+    .main{flex:1;padding:24px 32px;overflow-x:hidden}
     h1{font-size:20px;font-weight:600;color:#216416;margin-bottom:2px}
     .sub{font-size:13px;color:#666;margin-bottom:20px}
     .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
@@ -176,6 +184,9 @@ app.get('/', (req, res) => {
   </style>
 </head>
 <body>
+<div class="layout">
+  ${renderSidebar('calendario')}
+  <div class="main">
 <div class="container">
   <h1>🚀 Magenta SEO</h1>
   <p class="sub">Sistema automático de publicación — reparaciondeportones.cl</p>
@@ -257,6 +268,8 @@ app.get('/', (req, res) => {
     ${historial.length === 0
       ? '<p style="font-size:13px;color:#999">Sin publicaciones aún.</p>'
       : `<table><thead><tr><th>Fecha</th><th>Estado</th><th>Artículo</th></tr></thead><tbody>${filasHistorial}</tbody></table>`}
+  </div>
+</div>
   </div>
 </div>
 
@@ -579,7 +592,7 @@ app.listen(PORT, () => console.log('[SERVER] Puerto', PORT));
 const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
 const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom } = require('./gsc-diagnostico');
 const { cargarPlan, guardarPlan } = require('./estrategia');
-const { renderSeoPanel, renderConnectCard } = require('./seo-panel');
+const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
 
 // Iniciar autorización con Google
 app.get('/auth/google', (req, res) => {
