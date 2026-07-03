@@ -123,6 +123,7 @@ function renderSeoPanel() {
       </div>
 
       <div id="diagResumen" class="grid3"></div>
+      <p style="font-size:11px;color:#999;font-style:italic;margin:-12px 0 20px">Los números pueden variar levemente respecto a Search Console: Google sigue completando datos de los últimos 1-2 días con retraso, así que las cifras más recientes suben con el tiempo.</p>
 
       <div class="card">
         <div class="card-title">
