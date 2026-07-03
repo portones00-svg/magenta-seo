@@ -616,6 +616,50 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
+// Terminos y condiciones de datos
+app.get('/terminos-datos', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Terminos y condiciones de datos — Magenta SEO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Poppins",sans-serif;background:#f5f5f5;color:#1a1a1a;padding:40px 20px}
+    .card{background:#fff;border-radius:16px;border:1px solid #e5e5e5;padding:40px;max-width:680px;margin:0 auto}
+    h1{font-size:20px;font-weight:600;color:#216416;margin-bottom:24px}
+    h2{font-size:15px;font-weight:600;margin:24px 0 8px}
+    p{font-size:13px;color:#444;line-height:1.7;margin-bottom:8px}
+    ul{margin:8px 0 8px 20px}
+    li{font-size:13px;color:#444;line-height:1.7;margin-bottom:6px}
+    .back{display:inline-block;margin-top:28px;font-size:12px;color:#216416;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Terminos y condiciones de datos</h1>
+
+    <h2>Por que los numeros pueden diferir levemente de Search Console</h2>
+    <p>Este panel usa la misma API oficial de Google Search Console que usa la interfaz web de Google. Aun asi, es normal ver pequenas diferencias entre lo que muestra este panel y lo que muestra Search Console directamente, por las siguientes razones documentadas por Google:</p>
+
+    <ul>
+      <li><strong>Zona horaria del corte diario:</strong> Search Console define el inicio y fin de cada "dia" de datos usando la zona horaria de EE.UU. Pacifico (PT), sin importar la ubicacion del sitio o del servidor. Este panel calcula los rangos de fecha usando UTC. En periodos largos (60-90 dias), ese desfase de zona horaria se acumula y puede generar diferencias visibles en los totales.</li>
+      <li><strong>Datos en proceso:</strong> Google sigue completando y ajustando los datos de los ultimos 1-2 dias despues de que aparecen por primera vez. Los numeros de los dias mas recientes suben con el tiempo a medida que Google termina de procesarlos.</li>
+      <li><strong>Filtro de privacidad en keywords:</strong> Search Console oculta automaticamente las busquedas de muy bajo volumen en el desglose por keyword individual (para proteger la privacidad de los usuarios que buscaron), pero si las incluye en los totales generales del sitio. Por eso la suma de la tabla de keywords individuales siempre sera un poco menor que las metricas generales.</li>
+      <li><strong>Limite de la API:</strong> Google documenta explicitamente que los datos entregados por la API de Search Analytics pueden no coincidir exactamente con la interfaz web, ya que esta ultima aplica procesamiento adicional no expuesto via API.</li>
+    </ul>
+
+    <h2>Que si es confiable</h2>
+    <p>Las tendencias, posiciones relativas entre keywords, y la direccion de los cambios (subidas y bajadas) son consistentes y confiables para tomar decisiones de contenido y SEO, incluso si los totales exactos difieren en un pequeno porcentaje respecto a la vista web de Search Console.</p>
+
+    <a href="/seo" class="back">← Volver al diagnostico</a>
+  </div>
+</body>
+</html>`);
+});
+
 // Dashboard de diagnóstico SEO
 app.get('/seo', async (req, res) => {
   const tokens = loadTokens();
