@@ -577,7 +577,9 @@ app.listen(PORT, () => console.log('[SERVER] Puerto', PORT));
 
 // ─── RUTAS SEO / SEARCH CONSOLE ──────────────────────────────────────────────
 const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
-const { getDiagnostico } = require('./gsc-diagnostico');
+const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom } = require('./gsc-diagnostico');
+const { cargarPlan, guardarPlan } = require('./estrategia');
+const { renderSeoPanel, renderConnectCard } = require('./seo-panel');
 
 // Iniciar autorización con Google
 app.get('/auth/google', (req, res) => {
@@ -605,26 +607,9 @@ app.get('/auth/callback', async (req, res) => {
 app.get('/seo', async (req, res) => {
   const tokens = loadTokens();
   if (!tokens) {
-    return res.send(`
-      <html><body style="font-family:sans-serif;padding:40px;max-width:600px;margin:0 auto">
-        <h2>🔗 Conectar Google Search Console</h2>
-        <p>Para ver el diagnóstico SEO necesitas autorizar el acceso a tu Search Console.</p>
-        <a href="/auth/google" style="background:#216416;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:16px">Conectar con Google →</a>
-      </body></html>
-    `);
+    return res.send(renderConnectCard());
   }
-
-  try {
-    const dias = parseInt(req.query.dias || '28');
-    const data = await getDiagnostico(dias);
-    res.json(data); // Por ahora JSON, luego lo renderizamos bonito
-  } catch(err) {
-    if (err.message.includes('No hay tokens')) {
-      res.redirect('/auth/google');
-    } else {
-      res.status(500).json({ error: err.message });
-    }
-  }
+  res.send(renderSeoPanel());
 });
 
 // API endpoint para el dashboard interno
@@ -632,6 +617,60 @@ app.get('/seo/data', async (req, res) => {
   try {
     const dias = parseInt(req.query.dias || '28');
     const data = await getDiagnostico(dias);
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Todas las keywords sin recortar
+app.get('/seo/keywords', async (req, res) => {
+  try {
+    const dias = parseInt(req.query.dias || '28');
+    const data = await getTodasLasKeywords(dias);
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Comparativa 30/60/90 dias
+app.get('/seo/comparativa', async (req, res) => {
+  try {
+    const data = await getComparativaHistorica();
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Comparativa custom entre dos rangos de fecha
+app.get('/seo/comparativa-custom', async (req, res) => {
+  try {
+    const { desdeA, hastaA, desdeB, hastaB } = req.query;
+    if (!desdeA || !hastaA || !desdeB || !hastaB) {
+      return res.json({ ok: false, error: 'Faltan parametros de fecha' });
+    }
+    const data = await getComparativaCustom(desdeA, hastaA, desdeB, hastaB);
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Plan de estrategia del mes
+app.get('/seo/estrategia', (req, res) => {
+  try {
+    const data = cargarPlan();
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/seo/estrategia', (req, res) => {
+  try {
+    const data = guardarPlan(req.body);
     res.json({ ok: true, data });
   } catch(err) {
     res.json({ ok: false, error: err.message });

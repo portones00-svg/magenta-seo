@@ -437,4 +437,37 @@ cargarDiagnostico();
 </html>`;
 }
 
-module.exports = { renderSeoPanel };
+function renderConnectCard() {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Magenta SEO — Conectar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Poppins",sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#fff;border-radius:16px;border:1px solid #e5e5e5;padding:40px;max-width:440px;width:100%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.04)}
+    .icon{font-size:40px;margin-bottom:16px}
+    h1{font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:8px}
+    p{font-size:14px;color:#666;line-height:1.6;margin-bottom:28px}
+    .btn{display:inline-block;background:#216416;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:500;font-family:Poppins,sans-serif}
+    .btn:hover{background:#1a5212}
+    .back{display:block;margin-top:20px;font-size:12px;color:#999;text-decoration:none}
+    .back:hover{color:#216416}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">\ud83d\udd17</div>
+    <h1>Conecta Google Search Console</h1>
+    <p>Para ver el diagnóstico SEO necesitamos acceso de solo lectura a tu Search Console.</p>
+    <a href="/auth/google" class="btn">Conectar con Google →</a>
+    <a href="/" class="back">← Volver al panel principal</a>
+  </div>
+</body>
+</html>`;
+}
+
+module.exports = { renderSeoPanel, renderConnectCard };
