@@ -9,20 +9,26 @@ const FTP_CONFIG = {
   secure: false,
 };
 
-const ROOT = process.env.SFTP_ROOT || '/home/reparac1/public_html';
+// Ruta relativa desde el home del usuario FTP
+// public_html es el directorio raíz del sitio
+const ROOT = 'public_html';
 
 async function subirArchivo(rutaRelativa, contenido) {
   const client = new ftp.Client();
   try {
     await client.access(FTP_CONFIG);
-    const rutaCompleta = path.join(ROOT, rutaRelativa);
+    const rutaCompleta = ROOT + '/' + rutaRelativa.replace(/^\//, '');
     const dir = path.dirname(rutaCompleta);
+    const filename = path.basename(rutaCompleta);
+
+    // ensureDir nos mueve al directorio automáticamente
     await client.ensureDir(dir);
-    await client.cd(dir);
+
     const { Readable } = require('stream');
     const stream = Readable.from([Buffer.from(contenido, 'utf8')]);
-    await client.uploadFrom(stream, path.basename(rutaCompleta));
-    console.log('[FTP] Subido:', rutaCompleta);
+    await client.uploadFrom(stream, filename);
+
+    console.log('[FTP] Subido OK:', rutaCompleta);
     return true;
   } catch (err) {
     console.error('[FTP] Error:', err.message);
@@ -36,13 +42,17 @@ async function leerArchivo(rutaRelativa) {
   const client = new ftp.Client();
   try {
     await client.access(FTP_CONFIG);
-    const rutaCompleta = path.join(ROOT, rutaRelativa);
+    const rutaCompleta = ROOT + '/' + rutaRelativa.replace(/^\//, '');
+    const dir = path.dirname(rutaCompleta);
+    const filename = path.basename(rutaCompleta);
+
+    await client.cd(dir);
     const chunks = [];
     const { Writable } = require('stream');
     const writable = new Writable({
       write(chunk, enc, cb) { chunks.push(chunk); cb(); }
     });
-    await client.downloadTo(writable, rutaCompleta);
+    await client.downloadTo(writable, filename);
     return Buffer.concat(chunks).toString('utf8');
   } catch (err) {
     console.error('[FTP] Error leyendo:', err.message);
@@ -53,7 +63,9 @@ async function leerArchivo(rutaRelativa) {
 }
 
 async function publicarArticulo({ slug, carpeta, htmlContent }) {
-  const ruta = carpeta ? `${carpeta}/${slug}/index.html` : `blog/${slug}/index.html`;
+  const ruta = carpeta
+    ? `${carpeta}/${slug}/index.html`
+    : `blog/${slug}/index.html`;
   await subirArchivo(ruta, htmlContent);
   console.log('[PUBLISHER] Publicado en /' + ruta);
   return [{ archivo: ruta, ok: true }];
@@ -64,7 +76,7 @@ async function testConexion() {
   try {
     await client.access(FTP_CONFIG);
     const list = await client.list(ROOT);
-    console.log('[FTP] Conexión OK. Archivos:', list.length);
+    console.log('[FTP] Conexión OK. Archivos en public_html:', list.length);
     return true;
   } catch (err) {
     console.error('[FTP] Conexión fallida:', err.message);
