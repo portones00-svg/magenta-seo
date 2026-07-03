@@ -17,7 +17,11 @@ const SITE_URL = process.env.SITE_URL || 'https://www.reparaciondeportones.cl';
 
 // Historial y borradores en memoria
 const historial = [];
-const borradores = {};
+const BFILE='/tmp/mseo-borradores.json';
+const fs2=require('fs');
+function loadB(){try{if(fs2.existsSync(BFILE))return JSON.parse(fs2.readFileSync(BFILE,'utf8'));}catch(e){}return {};}
+function saveB(b){try{fs2.writeFileSync(BFILE,JSON.stringify(b));}catch(e){}}
+let borradores=loadB();
 
 // ─── PANEL PRINCIPAL ─────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
