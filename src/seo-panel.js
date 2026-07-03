@@ -249,9 +249,12 @@ async function cargarDiagnostico() {
   document.getElementById('tablaKwBody').innerHTML = '<tr><td colspan="6" class="loading">Cargando keywords…</td></tr>';
 
   try {
+    const rango = document.getElementById('rangoComparar').value;
+    const diasParam = (rango !== 'custom') ? rango : '28';
+
     const [resumenRes, kwRes] = await Promise.all([
-      fetch('/seo/data').then(r => r.json()),
-      fetch('/seo/keywords').then(r => r.json())
+      fetch('/seo/data?dias=' + diasParam).then(r => r.json()),
+      fetch('/seo/keywords?dias=' + diasParam).then(r => r.json())
     ]);
 
     if (resumenRes.ok) {
@@ -263,7 +266,6 @@ async function cargarDiagnostico() {
       \`;
     }
 
-    const rango = document.getElementById('rangoComparar').value;
     let deltaMap = {};
     if (rango !== 'custom') {
       const comp = await fetch('/seo/comparativa').then(r => r.json());
