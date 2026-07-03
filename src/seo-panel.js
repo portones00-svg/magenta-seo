@@ -95,6 +95,10 @@ function renderSeoPanel() {
     .status-bar{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:10px;display:none}
     .status-ok{background:#e1f5ee;color:#0f6e56}
     .status-error{background:#faece7;color:#993c1d}
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center}
+    .modal.open{display:flex}
+    .modal-box{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+    .modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
   </style>
 </head>
 <body>
@@ -107,6 +111,11 @@ function renderSeoPanel() {
     <div id="view-diagnostico" class="view">
       <div class="card-title" style="margin-bottom:4px">Diagnóstico SEO</div>
       <div class="sub">Todas las keywords que compites, comparadas en el tiempo</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-primary btn-sm" id="tabKeywords" onclick="mostrarTabDiag('keywords')">Keywords</button>
+        <button class="btn btn-secondary btn-sm" id="tabPaginas" onclick="mostrarTabDiag('paginas')">Páginas</button>
+      </div>
 
       <div class="filters-row">
         <span style="font-size:12px;color:#666">Comparar:</span>
@@ -128,7 +137,7 @@ function renderSeoPanel() {
       <div id="diagResumen" class="grid3"></div>
       <p style="font-size:11px;color:#999;font-style:italic;margin:-12px 0 20px">Los números pueden variar levemente respecto a Search Console: Google sigue completando datos de los últimos 1-2 días con retraso, así que las cifras más recientes suben con el tiempo.</p>
 
-      <div class="card">
+      <div class="card" id="seccionKeywords">
         <div class="card-title">
           <span>Todas las keywords (<span id="totalKwCount">0</span>)</span>
           <span style="font-size:12px;color:#999;font-weight:400">Click en columna para ordenar</span>
@@ -147,6 +156,29 @@ function renderSeoPanel() {
             </thead>
             <tbody id="tablaKwBody">
               <tr><td colspan="6" class="loading">Cargando keywords…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="seccionPaginas" style="display:none">
+        <div class="card-title">
+          <span>Todas las páginas (<span id="totalPagCount">0</span>)</span>
+          <input type="text" id="buscarPag" placeholder="Buscar página..." style="width:220px;margin-bottom:0">
+        </div>
+        <div class="table-wrap">
+          <table id="tablaPag">
+            <thead>
+              <tr>
+                <th data-sortpag="pagina">Página</th>
+                <th data-sortpag="posicion">Posición</th>
+                <th data-sortpag="clics">Clics</th>
+                <th data-sortpag="impresiones">Impresiones</th>
+                <th data-sortpag="ctr">CTR</th>
+              </tr>
+            </thead>
+            <tbody id="tablaPagBody">
+              <tr><td colspan="5" class="loading">Cargando páginas…</td></tr>
             </tbody>
           </table>
         </div>
@@ -211,6 +243,14 @@ function renderSeoPanel() {
       </div>
     </div>
 
+  </div>
+</div>
+
+<div class="modal" id="modalPagKw">
+  <div class="modal-box">
+    <div class="modal-title" id="modalPagKwTitle">Keywords de esta página</div>
+    <div id="modalPagKwBody" style="max-height:400px;overflow-y:auto"></div>
+    <button class="btn btn-secondary" onclick="cerrarModalPagKw()" style="width:100%;margin-top:12px">Cerrar</button>
   </div>
 </div>
 
@@ -344,6 +384,116 @@ function renderTablaKw() {
       <td>\${deltaHtml}</td>
     </tr>\`;
   }).join('');
+}
+
+function mostrarTabDiag(tab) {
+  const btnKw = document.getElementById('tabKeywords');
+  const btnPag = document.getElementById('tabPaginas');
+  const secKw = document.getElementById('seccionKeywords');
+  const secPag = document.getElementById('seccionPaginas');
+  if (tab === 'keywords') {
+    btnKw.className = 'btn btn-primary btn-sm';
+    btnPag.className = 'btn btn-secondary btn-sm';
+    secKw.style.display = 'block';
+    secPag.style.display = 'none';
+  } else {
+    btnKw.className = 'btn btn-secondary btn-sm';
+    btnPag.className = 'btn btn-primary btn-sm';
+    secKw.style.display = 'none';
+    secPag.style.display = 'block';
+    if (!window.__pagCargado) cargarPaginas();
+  }
+}
+
+let pagData = [];
+let sortFieldPag = 'impresiones';
+let sortDirPag = -1;
+
+async function cargarPaginas() {
+  window.__pagCargado = true;
+  document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="loading">Cargando páginas…</td></tr>';
+  try {
+    const dias = document.getElementById('rangoComparar').value;
+    const diasParam = (dias !== 'custom') ? dias : '28';
+    const res = await fetch('/seo/paginas?dias=' + diasParam).then(r => r.json());
+    if (res.ok) {
+      pagData = res.data;
+      renderTablaPag();
+    } else {
+      document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="empty">' + (res.error || 'Error cargando datos') + '</td></tr>';
+    }
+  } catch(e) {
+    document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="empty">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+document.querySelectorAll('#tablaPag th[data-sortpag]').forEach(th => {
+  th.addEventListener('click', () => {
+    const field = th.dataset.sortpag;
+    if (sortFieldPag === field) { sortDirPag *= -1; } else { sortFieldPag = field; sortDirPag = -1; }
+    document.querySelectorAll('#tablaPag th').forEach(t => t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    renderTablaPag();
+  });
+});
+
+document.getElementById('buscarPag').addEventListener('input', renderTablaPag);
+
+function renderTablaPag() {
+  const busqueda = document.getElementById('buscarPag').value.toLowerCase();
+  let filtrado = pagData.filter(r => r.pagina.toLowerCase().includes(busqueda));
+  filtrado.sort((a, b) => {
+    let va = a[sortFieldPag], vb = b[sortFieldPag];
+    if (typeof va === 'string') return va.localeCompare(vb) * sortDirPag;
+    return (va - vb) * sortDirPag;
+  });
+  document.getElementById('totalPagCount').textContent = filtrado.length;
+  if (filtrado.length === 0) {
+    document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="empty">Sin resultados</td></tr>';
+    return;
+  }
+  document.getElementById('tablaPagBody').innerHTML = filtrado.map((r, i) => {
+    let posBadge = 'badge-bad';
+    if (r.posicion <= 3) posBadge = 'badge-ok';
+    else if (r.posicion <= 10) posBadge = 'badge-warn';
+    return \`<tr style="cursor:pointer" data-idx="\${i}">
+      <td>\${r.pagina}</td>
+      <td><span class="badge \${posBadge}">\${r.posicion}</span></td>
+      <td>\${r.clics}</td>
+      <td>\${r.impresiones}</td>
+      <td>\${r.ctr}%</td>
+    </tr>\`;
+  }).join('');
+  document.querySelectorAll('#tablaPagBody tr[data-idx]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const row = filtrado[parseInt(tr.dataset.idx)];
+      abrirModalPagKw(row.urlCompleta, row.pagina);
+    });
+  });
+}
+
+async function abrirModalPagKw(urlCompleta, pagina) {
+  document.getElementById('modalPagKwTitle').textContent = 'Keywords de: ' + pagina;
+  document.getElementById('modalPagKwBody').innerHTML = '<p class="loading">Cargando…</p>';
+  document.getElementById('modalPagKw').classList.add('open');
+  try {
+    const dias = document.getElementById('rangoComparar').value;
+    const diasParam = (dias !== 'custom') ? dias : '28';
+    const res = await fetch('/seo/pagina-keywords?url=' + encodeURIComponent(urlCompleta) + '&dias=' + diasParam).then(r => r.json());
+    if (res.ok && res.data.length > 0) {
+      document.getElementById('modalPagKwBody').innerHTML = '<table><thead><tr><th>Keyword</th><th>Posición</th><th>Impresiones</th></tr></thead><tbody>' +
+        res.data.map(k => \`<tr><td>\${k.keyword}</td><td>\${k.posicion}</td><td>\${k.impresiones}</td></tr>\`).join('') +
+        '</table>';
+    } else {
+      document.getElementById('modalPagKwBody').innerHTML = '<p class="empty">Sin datos de keywords para esta página.</p>';
+    }
+  } catch(e) {
+    document.getElementById('modalPagKwBody').innerHTML = '<p class="empty">Error: ' + e.message + '</p>';
+  }
+}
+
+function cerrarModalPagKw() {
+  document.getElementById('modalPagKw').classList.remove('open');
 }
 
 // ─── ESTRATEGIA ────────────────────────────────────────────────────────

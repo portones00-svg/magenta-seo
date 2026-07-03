@@ -590,7 +590,7 @@ app.listen(PORT, () => console.log('[SERVER] Puerto', PORT));
 
 // ─── RUTAS SEO / SEARCH CONSOLE ──────────────────────────────────────────────
 const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
-const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom } = require('./gsc-diagnostico');
+const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina } = require('./gsc-diagnostico');
 const { cargarPlan, guardarPlan } = require('./estrategia');
 const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
 
@@ -685,6 +685,30 @@ app.get('/seo/keywords', async (req, res) => {
   try {
     const dias = parseInt(req.query.dias || '28');
     const data = await getTodasLasKeywords(dias);
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Todas las paginas sin recortar
+app.get('/seo/paginas', async (req, res) => {
+  try {
+    const dias = parseInt(req.query.dias || '28');
+    const data = await getTodasLasPaginas(dias);
+    res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Keywords de una pagina especifica (drill-down)
+app.get('/seo/pagina-keywords', async (req, res) => {
+  try {
+    const dias = parseInt(req.query.dias || '28');
+    const url = req.query.url;
+    if (!url) return res.json({ ok: false, error: 'Falta parametro url' });
+    const data = await getKeywordsDePagina(url, dias);
     res.json({ ok: true, data });
   } catch(err) {
     res.json({ ok: false, error: err.message });

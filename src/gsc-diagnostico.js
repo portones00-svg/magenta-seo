@@ -164,6 +164,60 @@ async function getTodasLasKeywords(dias = 28) {
   })).sort((a,b) => b.impresiones - a.impresiones);
 }
 
+// ─── TODAS las paginas, sin recortar (para el tab Paginas del Diagnostico) ─
+async function getTodasLasPaginas(dias = 28) {
+  const auth = await getAuthenticatedClient();
+  const searchconsole = google.webmasters({ version: 'v3', auth });
+  const endDate = new Date();
+  const startDate = restarDias(dias);
+  const res = await searchconsole.searchanalytics.query({
+    siteUrl: SITE_URL,
+    requestBody: {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      dimensions: ['page'],
+      rowLimit: 25000
+    }
+  });
+  const rows = res.data.rows || [];
+  return rows.map(r => ({
+    pagina: r.keys[0].replace(SITE_URL, '/'),
+    urlCompleta: r.keys[0],
+    clics: r.clicks,
+    impresiones: r.impressions,
+    ctr: parseFloat((r.ctr * 100).toFixed(2)),
+    posicion: parseFloat(r.position.toFixed(1)),
+  })).sort((a,b) => b.impresiones - a.impresiones);
+}
+
+// ─── Keywords para una pagina especifica (drill-down) ─────────────────────
+async function getKeywordsDePagina(urlCompleta, dias = 28) {
+  const auth = await getAuthenticatedClient();
+  const searchconsole = google.webmasters({ version: 'v3', auth });
+  const endDate = new Date();
+  const startDate = restarDias(dias);
+  const res = await searchconsole.searchanalytics.query({
+    siteUrl: SITE_URL,
+    requestBody: {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      dimensions: ['query'],
+      dimensionFilterGroups: [{
+        filters: [{ dimension: 'page', operator: 'equals', expression: urlCompleta }]
+      }],
+      rowLimit: 100
+    }
+  });
+  const rows = (res.data.rows || []).filter(r => esQueryValida(r.keys[0]));
+  return rows.map(r => ({
+    keyword: r.keys[0],
+    clics: r.clicks,
+    impresiones: r.impressions,
+    ctr: parseFloat((r.ctr * 100).toFixed(2)),
+    posicion: parseFloat(r.position.toFixed(1)),
+  })).sort((a,b) => b.impresiones - a.impresiones);
+}
+
 // ─── Comparativa vs 30/60/90 días (ventanas de 7 días para reducir ruido) ─
 async function getComparativaHistorica() {
   const hoy = new Date();
@@ -233,5 +287,5 @@ async function getComparativaCustom(desdeA, hastaA, desdeB, hastaB) {
 
 module.exports = {
   getDiagnostico, getTodasLasKeywords, getComparativaHistorica,
-  getComparativaCustom, KEYWORDS_OBJETIVO
+  getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina, KEYWORDS_OBJETIVO
 };
