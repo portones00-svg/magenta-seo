@@ -10,10 +10,11 @@ function renderSidebar(active) {
     const isActive = active === it.id;
     return `<a class="nav-item${isActive ? ' active' : ''}" href="${it.href}" data-view="${it.id}">${it.icon} ${it.label}</a>`;
   }).join('\n    ');
+  const publicacionActive = active === 'publicacion' || active === 'calendario';
   return `<div class="sidebar">
     <h1>\ud83d\ude80 Magenta SEO</h1>
     ${linksHtml}
-    <div class="nav-item disabled">\ud83d\udce4 Publicación</div>
+    <a class="nav-item${publicacionActive ? ' active' : ''}" href="/#cola" data-view="publicacion">\ud83d\udce4 Publicación</a>
     <div style="padding:14px 20px 0"><a href="/" style="font-size:12px">← Volver al panel principal</a></div>
   </div>`;
 }

@@ -257,7 +257,7 @@ app.get('/', (req, res) => {
   </div>
 
   <!-- COLA DE ARTÍCULOS -->
-  <div class="card">
+  <div class="card" id="cola">
     <div class="card-title">📋 Cola de publicaciones</div>
     <div id="colaContainer">${renderCola()}</div>
   </div>
