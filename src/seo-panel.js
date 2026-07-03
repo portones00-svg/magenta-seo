@@ -15,8 +15,7 @@ function renderSidebar(active) {
     <h1>\ud83d\ude80 Magenta SEO</h1>
     ${linksHtml}
     <a class="nav-item${publicacionActive ? ' active' : ''}" href="/#cola" data-view="publicacion">\ud83d\udce4 Publicación</a>
-    <div style="padding:14px 20px 0;display:flex;flex-direction:column;gap:6px">
-      <a href="/" style="font-size:12px">← Volver al panel principal</a>
+    <div style="padding:14px 20px 0">
       <a href="/terminos-datos" target="_blank" style="font-size:11px;color:#999">Términos y condiciones de datos</a>
     </div>
   </div>`;
