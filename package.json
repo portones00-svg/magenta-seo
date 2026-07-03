@@ -1,0 +1,19 @@
+{
+  "name": "magenta-seo",
+  "version": "1.0.0",
+  "description": "Sistema automatico de publicacion SEO para reparaciondeportones.cl",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ssh2-sftp-client": "^9.1.0",
+    "node-cron": "^3.0.3",
+    "anthropic": "^0.24.0",
+    "mysql2": "^3.6.0",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0"
+  }
+}
