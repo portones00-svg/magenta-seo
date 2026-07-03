@@ -75,10 +75,13 @@ async function getDiagnostico(dias = 28) {
   const pages = pageRes.data.rows || [];
   const dailyData = generalRes.data.rows || [];
 
-  const totalClics = queries.reduce((s, r) => s + r.clicks, 0);
-  const totalImpresiones = queries.reduce((s, r) => s + r.impressions, 0);
+  // Usamos dailyData (dimension 'date') para los totales, no 'queries', porque
+  // Search Console oculta keywords de bajo volumen en el desglose por privacidad
+  // pero SI las incluye en los totales generales del sitio.
+  const totalClics = dailyData.reduce((s, r) => s + r.clicks, 0);
+  const totalImpresiones = dailyData.reduce((s, r) => s + r.impressions, 0);
   const posPromedio = totalImpresiones > 0
-    ? (queries.reduce((s, r) => s + r.position * r.impressions, 0) / totalImpresiones).toFixed(1)
+    ? (dailyData.reduce((s, r) => s + r.position * r.impressions, 0) / totalImpresiones).toFixed(1)
     : 0;
 
   const ganadas = queries.filter(r => r.position <= 3).sort((a,b) => b.impressions - a.impressions);
