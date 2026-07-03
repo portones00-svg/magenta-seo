@@ -1,78 +1,76 @@
-const SftpClient = require('ssh2-sftp-client');
+const ftp = require('basic-ftp');
 const path = require('path');
 
-const SFTP_CONFIG = {
+const FTP_CONFIG = {
   host: process.env.SFTP_HOST,
-  port: parseInt(process.env.SFTP_PORT || '22'),
-  username: process.env.SFTP_USER,
+  user: process.env.SFTP_USER,
   password: process.env.SFTP_PASS,
+  port: 21,
+  secure: false,
 };
 
 const ROOT = process.env.SFTP_ROOT || '/home/reparac1/public_html';
 
 async function subirArchivo(rutaRelativa, contenido) {
-  const sftp = new SftpClient();
+  const client = new ftp.Client();
   try {
-    await sftp.connect(SFTP_CONFIG);
+    await client.access(FTP_CONFIG);
     const rutaCompleta = path.join(ROOT, rutaRelativa);
     const dir = path.dirname(rutaCompleta);
-
-    // Crear directorio si no existe
-    await sftp.mkdir(dir, true).catch(() => {});
-
-    // Subir el archivo
-    await sftp.put(Buffer.from(contenido, 'utf8'), rutaCompleta);
-    console.log(`[SFTP] Subido: ${rutaCompleta}`);
+    await client.ensureDir(dir);
+    await client.cd(dir);
+    const { Readable } = require('stream');
+    const stream = Readable.from([Buffer.from(contenido, 'utf8')]);
+    await client.uploadFrom(stream, path.basename(rutaCompleta));
+    console.log('[FTP] Subido:', rutaCompleta);
     return true;
   } catch (err) {
-    console.error('[SFTP] Error:', err.message);
+    console.error('[FTP] Error:', err.message);
     throw err;
   } finally {
-    await sftp.end();
+    client.close();
   }
 }
 
 async function leerArchivo(rutaRelativa) {
-  const sftp = new SftpClient();
+  const client = new ftp.Client();
   try {
-    await sftp.connect(SFTP_CONFIG);
+    await client.access(FTP_CONFIG);
     const rutaCompleta = path.join(ROOT, rutaRelativa);
-    const buffer = await sftp.get(rutaCompleta);
-    return buffer.toString('utf8');
+    const chunks = [];
+    const { Writable } = require('stream');
+    const writable = new Writable({
+      write(chunk, enc, cb) { chunks.push(chunk); cb(); }
+    });
+    await client.downloadTo(writable, rutaCompleta);
+    return Buffer.concat(chunks).toString('utf8');
   } catch (err) {
-    console.error('[SFTP] Error leyendo:', err.message);
+    console.error('[FTP] Error leyendo:', err.message);
     return null;
   } finally {
-    await sftp.end();
+    client.close();
   }
 }
 
-async function publicarArticulo({ slug, carpeta, htmlContent, actualizarBlog = true }) {
-  const resultados = [];
-
-  // 1. Subir el artículo
-  const rutaArticulo = carpeta
-    ? `${carpeta}/${slug}/index.html`
-    : `blog/${slug}/index.html`;
-
-  await subirArchivo(rutaArticulo, htmlContent);
-  resultados.push({ archivo: rutaArticulo, ok: true });
-
-  console.log(`[PUBLISHER] Artículo publicado en /${rutaArticulo}`);
-  return resultados;
+async function publicarArticulo({ slug, carpeta, htmlContent }) {
+  const ruta = carpeta ? `${carpeta}/${slug}/index.html` : `blog/${slug}/index.html`;
+  await subirArchivo(ruta, htmlContent);
+  console.log('[PUBLISHER] Publicado en /' + ruta);
+  return [{ archivo: ruta, ok: true }];
 }
 
 async function testConexion() {
-  const sftp = new SftpClient();
+  const client = new ftp.Client();
   try {
-    await sftp.connect(SFTP_CONFIG);
-    const list = await sftp.list(ROOT);
-    console.log('[SFTP] Conexión OK. Archivos en root:', list.length);
-    await sftp.end();
+    await client.access(FTP_CONFIG);
+    const list = await client.list(ROOT);
+    console.log('[FTP] Conexión OK. Archivos:', list.length);
     return true;
   } catch (err) {
-    console.error('[SFTP] Conexión fallida:', err.message);
+    console.error('[FTP] Conexión fallida:', err.message);
     return false;
+  } finally {
+    client.close();
   }
 }
 
