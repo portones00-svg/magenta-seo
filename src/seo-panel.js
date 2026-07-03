@@ -175,10 +175,11 @@ function renderSeoPanel() {
                 <th data-sortpag="clics">Clics</th>
                 <th data-sortpag="impresiones">Impresiones</th>
                 <th data-sortpag="ctr">CTR</th>
+                <th data-sortpag="potencial">Potencial \ud83d\udd25</th>
               </tr>
             </thead>
             <tbody id="tablaPagBody">
-              <tr><td colspan="5" class="loading">Cargando páginas…</td></tr>
+              <tr><td colspan="6" class="loading">Cargando páginas…</td></tr>
             </tbody>
           </table>
         </div>
@@ -406,24 +407,28 @@ function mostrarTabDiag(tab) {
 }
 
 let pagData = [];
-let sortFieldPag = 'impresiones';
+let sortFieldPag = 'potencial';
 let sortDirPag = -1;
 
 async function cargarPaginas() {
   window.__pagCargado = true;
-  document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="loading">Cargando páginas…</td></tr>';
+  document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="6" class="loading">Cargando páginas…</td></tr>';
   try {
     const dias = document.getElementById('rangoComparar').value;
     const diasParam = (dias !== 'custom') ? dias : '28';
     const res = await fetch('/seo/paginas?dias=' + diasParam).then(r => r.json());
     if (res.ok) {
-      pagData = res.data;
+      pagData = res.data.map(r => {
+        const ctrActual = r.ctr / 100;
+        const potencial = Math.max(0, Math.round(r.impresiones * (0.28 - ctrActual)));
+        return { ...r, potencial };
+      });
       renderTablaPag();
     } else {
-      document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="empty">' + (res.error || 'Error cargando datos') + '</td></tr>';
+      document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="6" class="empty">' + (res.error || 'Error cargando datos') + '</td></tr>';
     }
   } catch(e) {
-    document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="empty">Error: ' + e.message + '</td></tr>';
+    document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="6" class="empty">Error: ' + e.message + '</td></tr>';
   }
 }
 
@@ -449,19 +454,21 @@ function renderTablaPag() {
   });
   document.getElementById('totalPagCount').textContent = filtrado.length;
   if (filtrado.length === 0) {
-    document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="5" class="empty">Sin resultados</td></tr>';
+    document.getElementById('tablaPagBody').innerHTML = '<tr><td colspan="6" class="empty">Sin resultados</td></tr>';
     return;
   }
   document.getElementById('tablaPagBody').innerHTML = filtrado.map((r, i) => {
     let posBadge = 'badge-bad';
     if (r.posicion <= 3) posBadge = 'badge-ok';
     else if (r.posicion <= 10) posBadge = 'badge-warn';
+    const potHtml = r.potencial > 0 ? \`<span class="delta-up">+\${r.potencial} clics/mes</span>\` : '<span class="delta-flat">—</span>';
     return \`<tr style="cursor:pointer" data-idx="\${i}">
       <td>\${r.pagina}</td>
       <td><span class="badge \${posBadge}">\${r.posicion}</span></td>
       <td>\${r.clics}</td>
       <td>\${r.impresiones}</td>
       <td>\${r.ctr}%</td>
+      <td>\${potHtml}</td>
     </tr>\`;
   }).join('');
   document.querySelectorAll('#tablaPagBody tr[data-idx]').forEach(tr => {
