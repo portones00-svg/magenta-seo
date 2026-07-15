@@ -811,7 +811,14 @@ async function generarPlanAutomatico(prioridades = []) {
   const resto = KW_SUGERIDAS.filter(t => !yaUsados.has(t.tema));
   const listaTemas = [...prioritarios, ...resto];
 
-  return listaTemas.map((item, idx) => {
+  // Arreglos rapidos: paginas que YA rankean bien (posicion <= 6) pero con
+  // CTR muy por debajo de lo esperado - se arreglan con titulo/meta, no con articulos nuevos
+  const arreglosRapidos = comerciales
+    .filter(p => p.posicion <= 6 && p.potencial >= 20)
+    .slice(0, 8)
+    .map(p => ({ pagina: p.pagina, posicion: p.posicion, ctr: p.ctr, potencial: p.potencial }));
+
+  const articulos = listaTemas.map((item, idx) => {
     const temaNorm = normalizarTexto(item.tema);
     const palabras = temaNorm.split(' ').filter(w => w.length > 3);
 
@@ -841,6 +848,8 @@ async function generarPlanAutomatico(prioridades = []) {
       fecha: fecha.toISOString().split('T')[0],
     };
   });
+
+  return { articulos, arreglosRapidos };
 }
 
 // Genera el plan del mes automaticamente (con prioridades opcionales del usuario)

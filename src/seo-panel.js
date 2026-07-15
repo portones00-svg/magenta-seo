@@ -195,6 +195,26 @@ function renderSeoPanel() {
       <div id="planGuardadoBox"></div>
 
       <div class="card">
+        <div class="card-title">⚡ Arreglos rápidos de título/meta</div>
+        <div class="sub">Páginas que ya rankean bien pero pierden clics por un título poco atractivo — se arreglan hoy, sin esperar contenido nuevo.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Página</th>
+                <th>Posición</th>
+                <th>CTR actual</th>
+                <th>Potencial si se arregla</th>
+              </tr>
+            </thead>
+            <tbody id="arreglosRapidosBody">
+              <tr><td colspan="4" class="loading">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title">
           <span>Plan automático (<span id="planAutoCount">0</span> artículos)</span>
           <button class="btn btn-secondary btn-sm" id="btnRegenerarPlan">🔄 Regenerar</button>
@@ -564,7 +584,8 @@ async function generarPlanAuto() {
       body: JSON.stringify({ texto })
     });
     if (!res.ok) throw new Error(res.error || 'Error generando el plan');
-    planAutoData = res.data;
+    planAutoData = res.data.articulos || [];
+    const arreglos = res.data.arreglosRapidos || [];
     document.getElementById('planAutoCount').textContent = planAutoData.length;
     document.getElementById('planAutoBody').innerHTML = planAutoData.map(item => \`<tr>
       <td>\${item.fecha}</td>
@@ -573,8 +594,18 @@ async function generarPlanAuto() {
       <td>\${item.enlazarA ? item.enlazarA : 'Sin sugerencia'}\${item.enlazarPotencial ? ' <span class="delta-up">(+' + item.enlazarPotencial + ' clics/mes)</span>' : ''}</td>
     </tr>\`).join('') || '<tr><td colspan="4" class="empty">No hay temas sugeridos configurados</td></tr>';
     if (planAutoData.length > 0) renderExplicacionPlan(planAutoData);
+
+    document.getElementById('arreglosRapidosBody').innerHTML = arreglos.length > 0
+      ? arreglos.map(a => \`<tr>
+          <td>\${a.pagina}</td>
+          <td><span class="badge badge-ok">\${a.posicion}</span></td>
+          <td>\${a.ctr}%</td>
+          <td><span class="delta-up">+\${a.potencial} clics/mes</span></td>
+        </tr>\`).join('')
+      : '<tr><td colspan="4" class="empty">No se detectaron arreglos urgentes esta semana</td></tr>';
   } catch(e) {
     document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="empty">Error: ' + e.message + '</td></tr>';
+    document.getElementById('arreglosRapidosBody').innerHTML = '<tr><td colspan="4" class="empty">Error</td></tr>';
   }
 }
 
