@@ -846,6 +846,7 @@ async function generarPlanAutomatico(prioridades = []) {
       enlazarA: mejor ? mejor.pagina : null,
       enlazarPotencial: mejor ? mejor.potencial : 0,
       fecha: fecha.toISOString().split('T')[0],
+      prioritario: idx < prioritarios.length,
     };
   });
 
