@@ -5,6 +5,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const CIUDADES = 'Santiago, Antofagasta, La Serena, Coquimbo, Viña del Mar, Concepción y Temuco';
 const SITIO = 'Reparaciondeportones.cl';
 const TELEFONO = '+56930713507';
+const HECHOS_NEGOCIO = 'La visita tecnica SIEMPRE tiene costo, y el costo varia segun la distancia/comuna (nunca es un monto fijo ni gratis). NUNCA escribas "presupuesto sin costo", "visita gratis", "cotizacion gratis", "sin costo", "gratis" ni nada similar. NUNCA menciones un monto especifico de precio salvo que se te entregue explicitamente. No inventes garantias, plazos de entrega, promociones ni ningun otro dato comercial que no se te entregue explicitamente. Si no tienes un dato, no lo menciones - es preferible un texto generico que uno con informacion falsa que pueda generar reclamos de clientes. IMPORTANTE: esto es una regla interna para ti, NUNCA repitas esta instruccion de forma literal en el texto final - simplemente evita esos temas.';
 
 // Keywords prioritarias basadas en datos reales de Search Console
 const KEYWORDS_PRIORITARIAS = {
@@ -37,6 +38,7 @@ REGLAS ESTRICTAS:
 - El contenido debe ser único, no copiar de otros sitios
 - Tono profesional pero cercano, en español chileno
 - NO inventes modelos o especificaciones técnicas que no sean reales
+- HECHOS DEL NEGOCIO QUE DEBES RESPETAR SIEMPRE: ${HECHOS_NEGOCIO}
 - Devuelve SOLO el HTML del contenido (párrafos y h2), sin head, body ni estructura de página`;
 
   const userPrompt = tipo === 'articulo'
@@ -72,6 +74,8 @@ async function generarMetadata({ tema, marca, tipo }) {
 Tema: ${tema}
 ${marca ? `Marca: ${marca}` : ''}
 Tipo: ${tipo}
+
+HECHOS DEL NEGOCIO QUE DEBES RESPETAR SIEMPRE: ${HECHOS_NEGOCIO}
 
 Devuelve SOLO un JSON válido con estas claves:
 {
