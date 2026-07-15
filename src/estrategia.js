@@ -23,4 +23,27 @@ function guardarPlan(plan) {
   }
 }
 
-module.exports = { cargarPlan, guardarPlan };
+const HISTORIAL_FILE = `${DATA_DIR}/magenta-seo-historial.json`;
+
+function cargarHistorial() {
+  try {
+    if (fs.existsSync(HISTORIAL_FILE)) {
+      return JSON.parse(fs.readFileSync(HISTORIAL_FILE, 'utf8'));
+    }
+  } catch(e) {}
+  return [];
+}
+
+function guardarEnHistorial(entrada) {
+  try {
+    const historial = cargarHistorial();
+    historial.push(entrada);
+    fs.writeFileSync(HISTORIAL_FILE, JSON.stringify(historial, null, 2));
+    return entrada;
+  } catch(e) {
+    console.error('[HISTORIAL] Error guardando:', e.message);
+    return null;
+  }
+}
+
+module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial };

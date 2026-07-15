@@ -626,25 +626,20 @@ function renderExplicacionPlan(data) {
     </div>\`;
 }
 
-function renderMetaEstrategia(articulos, arreglos) {
-  const paginasArt = {};
-  articulos.forEach(item => {
-    if (item.enlazarA && !paginasArt[item.enlazarA]) paginasArt[item.enlazarA] = item.enlazarPotencial || 0;
-  });
-  const potencialArticulos = Object.values(paginasArt).reduce((s, v) => s + v, 0);
-  const potencialArreglos = arreglos.reduce((s, a) => s + (a.potencial || 0), 0);
-
-  const p30 = Math.round(potencialArreglos * 0.7 + potencialArticulos * 0.10);
-  const p60 = Math.round(potencialArreglos * 0.9 + potencialArticulos * 0.35);
-  const p90 = Math.round(potencialArreglos * 1.0 + potencialArticulos * 0.60);
+function renderMetaEstrategia(totalClicsActual) {
+  // Modelo conservador anclado al trafico real actual, no a potenciales optimistas sumados.
+  // Rangos tipicos de crecimiento organico real para un sitio chico con trabajo consistente de SEO.
+  const p30 = Math.round(totalClicsActual * 0.08);
+  const p60 = Math.round(totalClicsActual * 0.20);
+  const p90 = Math.round(totalClicsActual * 0.35);
 
   document.getElementById('metaEstrategia').innerHTML = \`
     <div class="grid3">
-      <div class="metric"><div class="metric-val">+\${p30}</div><div class="metric-lab">Clics/mes est. en 30 días</div></div>
-      <div class="metric"><div class="metric-val">+\${p60}</div><div class="metric-lab">Clics/mes est. en 60 días</div></div>
-      <div class="metric"><div class="metric-val">+\${p90}</div><div class="metric-lab">Clics/mes est. en 90 días</div></div>
+      <div class="metric"><div class="metric-val">\${totalClicsActual}</div><div class="metric-lab">Clics/mes HOY (línea base)</div></div>
+      <div class="metric"><div class="metric-val">+\${p30}</div><div class="metric-lab">Meta conservadora 30 días</div></div>
+      <div class="metric"><div class="metric-val">+\${p90}</div><div class="metric-lab">Meta conservadora 90 días</div></div>
     </div>
-    <p style="font-size:11px;color:#999;font-style:italic;margin-top:-8px;margin-bottom:16px">Estimación basada en el potencial detectado hoy — los arreglos de título/meta se reflejan más rápido, el contenido nuevo toma más tiempo en ganar autoridad. Vuelve a revisar este número en 30 días para auditar el avance real.</p>
+    <p style="font-size:11px;color:#999;font-style:italic;margin-top:-8px;margin-bottom:16px">Estimación conservadora basada en tu tráfico real actual (\${totalClicsActual} clics/mes), no en potenciales ideales sumados. A 60 días la meta es +\${p60} clics/mes. Guarda el plan para auditar el resultado real contra esta meta en 30/60/90 días.</p>
   \`;
 }
 
@@ -671,7 +666,13 @@ async function generarPlanAuto() {
     if (planAutoData.length > 0) renderExplicacionPlan(planAutoData);
 
     arreglosData = arreglos;
-    renderMetaEstrategia(planAutoData, arreglos);
+    try {
+      const resumenRes = await fetchGSC('/seo/data?dias=28');
+      const totalClicsActual = (resumenRes.ok && resumenRes.data && resumenRes.data.resumen) ? resumenRes.data.resumen.totalClics : 0;
+      renderMetaEstrategia(totalClicsActual);
+    } catch(e2) {
+      document.getElementById('metaEstrategia').innerHTML = '';
+    }
     document.getElementById('arreglosRapidosBody').innerHTML = arreglos.length > 0
       ? arreglos.map((a, i) => \`<tr>
           <td>\${a.pagina}</td>
