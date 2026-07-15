@@ -593,7 +593,7 @@ const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
 const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina } = require('./gsc-diagnostico');
 const AnthropicSDK = require('@anthropic-ai/sdk');
 const anthropicClient = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
-const { cargarPlan, guardarPlan } = require('./estrategia');
+const { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial } = require('./estrategia');
 const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
 
 // Iniciar autorización con Google
@@ -928,10 +928,108 @@ app.get('/seo/estrategia', (req, res) => {
   }
 });
 
-app.post('/seo/estrategia', (req, res) => {
+app.post('/seo/estrategia', async (req, res) => {
   try {
     const data = guardarPlan(req.body);
+
+    // Snapshot para el historial - linea base real de las paginas objetivo
+    const items = req.body.items || [];
+    const arreglos = req.body.arreglos || [];
+    const paginasUnicas = {};
+    items.forEach(item => {
+      if (item.enlazarA && !paginasUnicas[item.enlazarA]) paginasUnicas[item.enlazarA] = true;
+    });
+    arreglos.forEach(a => { if (a.pagina) paginasUnicas[a.pagina] = true; });
+
+    const todasPaginas = await getTodasLasPaginas(28);
+    const paginasBase = Object.keys(paginasUnicas).map(pagina => {
+      const encontrada = todasPaginas.find(p => p.pagina === pagina);
+      return {
+        pagina,
+        posicionBase: encontrada ? encontrada.posicion : null,
+        clicsBase: encontrada ? encontrada.clics : 0,
+        impresionesBase: encontrada ? encontrada.impresiones : 0,
+      };
+    });
+
+    const diagActual = await getDiagnostico(28);
+    const totalClicsBase = diagActual.resumen.totalClics;
+
+    guardarEnHistorial({
+      id: Date.now().toString(),
+      fechaGuardado: new Date().toISOString(),
+      articulosCount: items.length,
+      totalClicsBase,
+      proyeccion30: Math.round(totalClicsBase * 0.08),
+      proyeccion60: Math.round(totalClicsBase * 0.20),
+      proyeccion90: Math.round(totalClicsBase * 0.35),
+      paginasBase,
+    });
+
     res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Lista de estrategias guardadas (mas reciente primero)
+app.get('/seo/estrategia/historial', (req, res) => {
+  try {
+    const historial = cargarHistorial();
+    res.json({ ok: true, data: historial.slice().reverse() });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Comparativa proyectado vs real de una estrategia guardada
+app.get('/seo/estrategia/auditoria/:id', async (req, res) => {
+  try {
+    const historial = cargarHistorial();
+    const entrada = historial.find(h => h.id === req.params.id);
+    if (!entrada) return res.json({ ok: false, error: 'No se encontro esa estrategia guardada' });
+
+    const diasTranscurridos = Math.floor((Date.now() - new Date(entrada.fechaGuardado).getTime()) / (1000*60*60*24));
+
+    const diagActual = await getDiagnostico(28);
+    const totalClicsActual = diagActual.resumen.totalClics;
+    const deltaClicsTotal = totalClicsActual - (entrada.totalClicsBase || 0);
+
+    const todasPaginas = await getTodasLasPaginas(28);
+    const comparativa = entrada.paginasBase.map(base => {
+      const actual = todasPaginas.find(p => p.pagina === base.pagina);
+      return {
+        pagina: base.pagina,
+        posicionBase: base.posicionBase,
+        posicionActual: actual ? actual.posicion : null,
+        clicsBase: base.clicsBase,
+        clicsActual: actual ? actual.clics : 0,
+      };
+    });
+
+    let proyeccionRelevante = entrada.proyeccion30;
+    let hito = 30;
+    if (diasTranscurridos >= 90) { proyeccionRelevante = entrada.proyeccion90; hito = 90; }
+    else if (diasTranscurridos >= 60) { proyeccionRelevante = entrada.proyeccion60; hito = 60; }
+
+    const cumplimiento = proyeccionRelevante > 0 ? Math.round((deltaClicsTotal / proyeccionRelevante) * 100) : null;
+
+    res.json({
+      ok: true,
+      data: {
+        fechaGuardado: entrada.fechaGuardado,
+        diasTranscurridos,
+        hito,
+        totalClicsBase: entrada.totalClicsBase,
+        totalClicsActual,
+        deltaClicsTotal,
+        proyeccion30: entrada.proyeccion30,
+        proyeccion60: entrada.proyeccion60,
+        proyeccion90: entrada.proyeccion90,
+        cumplimiento,
+        comparativa,
+      }
+    });
   } catch(err) {
     res.json({ ok: false, error: err.message });
   }
