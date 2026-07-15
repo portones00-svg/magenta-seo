@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // En producción esto debería estar en MySQL, por ahora en memoria + archivo JSON
-const COLA_FILE = '/tmp/magenta-seo-cola.json';
+const COLA_FILE = (process.env.DATA_DIR || '/tmp') + '/magenta-seo-cola.json';
 
 function cargarCola() {
   try {

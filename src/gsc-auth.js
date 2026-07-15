@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const fs = require('fs');
 
-const TOKEN_FILE = '/tmp/gsc-tokens.json';
+const TOKEN_FILE = (process.env.DATA_DIR || '/tmp') + '/gsc-tokens.json';
 
 function getOAuthClient() {
   return new google.auth.OAuth2(
