@@ -869,7 +869,7 @@ async function sugerirMejoraTituloMeta(pagina, posicion, ctrActual) {
   const urlCompleta = base + pagina;
   const actual = await obtenerTituloMetaActual(urlCompleta);
 
-  const HECHOS_NEGOCIO = 'La visita tecnica SIEMPRE tiene costo, y ese costo varia segun la distancia/comuna (nunca es un monto fijo). Por eso NUNCA digas "presupuesto sin costo", "visita gratis", "cotizacion gratis", "sin costo" ni nada similar, y tampoco menciones ningun monto especifico de precio. No inventes garantias, plazos, promociones ni ningun otro dato comercial que no se te entregue explicitamente aqui. Si no tienes un dato, simplemente no lo menciones - es preferible un texto mas generico que uno con informacion falsa.';
+  const HECHOS_NEGOCIO = 'NUNCA menciones el costo de la visita tecnica de NINGUNA forma - ni que es gratis, ni que tiene costo, ni que "varia segun distancia", ni ningun detalle de precio. Simplemente NO toques ese tema para nada en el titulo ni en la meta description, omitelo por completo como si no existiera. No inventes garantias, plazos, promociones ni ningun otro dato comercial que no se te entregue explicitamente aqui.';
 
   const msg = await anthropicClient.messages.create({
     model: 'claude-haiku-4-5-20251001',

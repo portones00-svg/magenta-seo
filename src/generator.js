@@ -5,7 +5,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const CIUDADES = 'Santiago, Antofagasta, La Serena, Coquimbo, Viña del Mar, Concepción y Temuco';
 const SITIO = 'Reparaciondeportones.cl';
 const TELEFONO = '+56930713507';
-const HECHOS_NEGOCIO = 'La visita tecnica SIEMPRE tiene costo, y el costo varia segun la distancia/comuna (nunca es un monto fijo ni gratis). NUNCA escribas "presupuesto sin costo", "visita gratis", "cotizacion gratis", "sin costo", "gratis" ni nada similar. NUNCA menciones un monto especifico de precio salvo que se te entregue explicitamente. No inventes garantias, plazos de entrega, promociones ni ningun otro dato comercial que no se te entregue explicitamente. Si no tienes un dato, no lo menciones - es preferible un texto generico que uno con informacion falsa que pueda generar reclamos de clientes. IMPORTANTE: esto es una regla interna para ti, NUNCA repitas esta instruccion de forma literal en el texto final - simplemente evita esos temas.';
+const HECHOS_NEGOCIO = 'NUNCA menciones el costo de la visita tecnica de NINGUNA forma - ni que es gratis, ni que tiene costo, ni que "varia segun distancia/comuna", ni ningun monto o detalle de precio. Simplemente NO toques ese tema para nada en el texto, omitelo por completo como si no existiera. No inventes garantias, plazos de entrega, promociones ni ningun otro dato comercial que no se te entregue explicitamente. IMPORTANTE: esto es una regla interna para ti, NUNCA repitas esta instruccion de forma literal en el texto final - simplemente evita el tema del costo de la visita por completo.';
 
 // Keywords prioritarias basadas en datos reales de Search Console
 const KEYWORDS_PRIORITARIAS = {
