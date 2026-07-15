@@ -739,6 +739,80 @@ app.get('/seo/comparativa-custom', async (req, res) => {
   }
 });
 
+function clasificarIntencionServer(pagina) {
+  const p = pagina.toLowerCase();
+  const informativas = ['falla', 'codigo-de-error', 'como-resetear', 'como-elegir', 'guia-rapida', 'manual', 'significado', 'capacitacion', 'que-hacer-si'];
+  const comerciales = ['a-domicilio', 'reparacion', 'instalacion', 'servicio-tecnico', 'mantencion', 'urgente', 'cotiza', 'precio', 'venta'];
+  if (informativas.some(k => p.includes(k))) return 'informativa';
+  if (comerciales.some(k => p.includes(k))) return 'comercial';
+  return 'comercial';
+}
+
+function normalizarTexto(s) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+async function generarPlanAutomatico() {
+  const paginas = await getTodasLasPaginas(90);
+  const comerciales = paginas
+    .map(p => {
+      const ctrActual = p.ctr / 100;
+      const potencial = Math.max(0, Math.round(p.impresiones * (0.28 - ctrActual)));
+      return { ...p, potencial };
+    })
+    .filter(p => clasificarIntencionServer(p.pagina) === 'comercial')
+    .sort((a, b) => b.potencial - a.potencial);
+
+  const usoContador = {};
+  comerciales.forEach(p => { usoContador[p.pagina] = 0; });
+
+  const hoy = new Date();
+
+  return KW_SUGERIDAS.map((item, idx) => {
+    const temaNorm = normalizarTexto(item.tema);
+    const palabras = temaNorm.split(' ').filter(w => w.length > 3);
+
+    let mejor = null;
+    for (const p of comerciales) {
+      const paginaNorm = normalizarTexto(p.pagina);
+      if (palabras.some(w => paginaNorm.includes(w))) {
+        if (!mejor || p.potencial > mejor.potencial) mejor = p;
+      }
+    }
+    if (!mejor && comerciales.length > 0) {
+      mejor = [...comerciales].sort((a, b) =>
+        (usoContador[a.pagina] - usoContador[b.pagina]) || (b.potencial - a.potencial)
+      )[0];
+    }
+    if (mejor) usoContador[mejor.pagina] = (usoContador[mejor.pagina] || 0) + 1;
+
+    const fecha = new Date(hoy);
+    fecha.setDate(fecha.getDate() + idx + 1);
+
+    return {
+      tema: item.tema,
+      marca: item.marca || '',
+      carpeta: item.carpeta || '',
+      enlazarA: mejor ? mejor.pagina : null,
+      enlazarPotencial: mejor ? mejor.potencial : 0,
+      fecha: fecha.toISOString().split('T')[0],
+    };
+  });
+}
+
+// Genera el plan del mes automaticamente (sin seleccion manual)
+app.get('/seo/plan-automatico', async (req, res) => {
+  try {
+    const plan = await generarPlanAutomatico();
+    res.json({ ok: true, data: plan });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 // Plan de estrategia del mes
 app.get('/seo/estrategia', (req, res) => {
   try {
