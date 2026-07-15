@@ -869,10 +869,12 @@ async function sugerirMejoraTituloMeta(pagina, posicion, ctrActual) {
   const urlCompleta = base + pagina;
   const actual = await obtenerTituloMetaActual(urlCompleta);
 
+  const HECHOS_NEGOCIO = 'La visita tecnica SIEMPRE tiene costo, y ese costo varia segun la distancia/comuna (nunca es un monto fijo). Por eso NUNCA digas "presupuesto sin costo", "visita gratis", "cotizacion gratis", "sin costo" ni nada similar, y tampoco menciones ningun monto especifico de precio. No inventes garantias, plazos, promociones ni ningun otro dato comercial que no se te entregue explicitamente aqui. Si no tienes un dato, simplemente no lo menciones - es preferible un texto mas generico que uno con informacion falsa.';
+
   const msg = await anthropicClient.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 500,
-    system: 'Eres un experto en SEO para una empresa de reparacion e instalacion de portones electricos en Chile. Te dan el titulo y meta description actuales de una pagina, su posicion en Google y su CTR actual. Propon un titulo (maximo 60 caracteres) y meta description (maximo 155 caracteres) mejorados que generen mas clics, manteniendo la keyword principal, en espanol chileno, tono profesional pero cercano. Responde SOLO con JSON, sin markdown: {"tituloSugerido": "...", "metaSugerida": "...", "razon": "explicacion breve de 1-2 frases"}',
+    system: 'Eres un experto en SEO para una empresa de reparacion e instalacion de portones electricos en Chile. Te dan el titulo y meta description actuales de una pagina, su posicion en Google y su CTR actual. Propon un titulo (maximo 60 caracteres) y meta description (maximo 155 caracteres) mejorados que generen mas clics, manteniendo la keyword principal, en espanol chileno, tono profesional pero cercano. HECHOS DEL NEGOCIO QUE DEBES RESPETAR SIEMPRE: ' + HECHOS_NEGOCIO + ' Responde SOLO con JSON, sin markdown: {"tituloSugerido": "...", "metaSugerida": "...", "razon": "explicacion breve de 1-2 frases"}',
     messages: [{ role: 'user', content: 'Pagina: ' + pagina + '\nTitulo actual: ' + actual.titulo + '\nMeta actual: ' + actual.meta + '\nPosicion en Google: ' + posicion + '\nCTR actual: ' + ctrActual + '%' }]
   });
   const texto = msg.content[0].text.trim().replace(/```json|```/g, '').trim();
