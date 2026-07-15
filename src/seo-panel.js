@@ -190,58 +190,35 @@ function renderSeoPanel() {
     <!-- ═══════════════ VISTA: ESTRATEGIA ══════════════ -->
     <div id="view-estrategia" class="view" style="display:none">
       <div class="card-title" style="margin-bottom:4px">Estrategia del mes</div>
-      <div class="sub">Define qué keywords priorizar para armar el plan de contenido</div>
+      <div class="sub">Plan de contenido generado automáticamente — sin selección manual</div>
 
       <div id="planGuardadoBox"></div>
 
       <div class="card">
-        <div class="step-dots">
-          <div class="step-dot active" data-dot="1"></div>
-          <div class="step-dot" data-dot="2"></div>
-          <div class="step-dot" data-dot="3"></div>
+        <div class="card-title">
+          <span>Plan automático (<span id="planAutoCount">0</span> artículos)</span>
+          <button class="btn btn-secondary btn-sm" id="btnRegenerarPlan">🔄 Regenerar</button>
         </div>
-
-        <!-- Paso 1: elegir keywords -->
-        <div class="step active" id="step-1">
-          <div class="card-title">Paso 1 — ¿Qué keywords quieres priorizar este mes?</div>
-          <div class="sub">Sugeridas automáticamente desde el diagnóstico (quick wins y rescatables primero)</div>
-          <div id="kwPickList"><div class="loading">Cargando sugerencias…</div></div>
-          <div style="margin-top:16px;display:flex;justify-content:flex-end">
-            <button class="btn btn-primary" id="btnStep1Next">Siguiente →</button>
-          </div>
+        <div class="sub">Cruza tus keywords sugeridas con las páginas comerciales de más potencial — cada artículo ya trae asignado a qué página enlazar internamente.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tema del artículo</th>
+                <th>Marca</th>
+                <th>Enlazar internamente a</th>
+              </tr>
+            </thead>
+            <tbody id="planAutoBody">
+              <tr><td colspan="4" class="loading">Generando plan…</td></tr>
+            </tbody>
+          </table>
         </div>
-
-        <!-- Paso 2: volumen y ciudades -->
-        <div class="step" id="step-2">
-          <div class="card-title">Paso 2 — Volumen y cobertura</div>
-          <div style="margin-bottom:16px">
-            <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">¿Cuántos artículos quieres publicar este mes?</label>
-            <select id="volumenMes" style="width:200px">
-              <option value="15">15 artículos (día por medio)</option>
-              <option value="20">20 artículos</option>
-              <option value="30" selected>30 artículos (diario)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:13px;font-weight:500;display:block;margin-bottom:6px">¿Qué ciudades priorizar?</label>
-            <div id="ciudadesPick"></div>
-          </div>
-          <div style="margin-top:16px;display:flex;justify-content:space-between">
-            <button class="btn btn-secondary" id="btnStep2Back">← Atrás</button>
-            <button class="btn btn-primary" id="btnStep2Next">Siguiente →</button>
-          </div>
+        <div style="margin-top:16px;display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" id="btnGuardarPlanAuto">Guardar plan del mes</button>
         </div>
-
-        <!-- Paso 3: resumen y guardar -->
-        <div class="step" id="step-3">
-          <div class="card-title">Paso 3 — Confirmar plan del mes</div>
-          <div id="planResumenFinal"></div>
-          <div style="margin-top:16px;display:flex;justify-content:space-between">
-            <button class="btn btn-secondary" id="btnStep3Back">← Atrás</button>
-            <button class="btn btn-primary" id="btnGuardarPlan">Guardar plan del mes</button>
-          </div>
-          <div id="estrategiaStatus" class="status-bar"></div>
-        </div>
+        <div id="estrategiaStatus" class="status-bar"></div>
       </div>
     </div>
 
@@ -277,6 +254,16 @@ if (window.location.hash === '#estrategia') {
   if (estrategiaTab) estrategiaTab.click();
 }
 
+// ─── Helper: detecta sesion de Google vencida y redirige a login ────────
+async function fetchGSC(url, opts) {
+  const res = await fetch(url, opts).then(r => r.json());
+  if (!res.ok && res.error && /token|invalid_grant|unauthorized|unauthenticated/i.test(res.error)) {
+    window.location.href = '/auth/google';
+    return new Promise(() => {});
+  }
+  return res;
+}
+
 // ─── DIAGNÓSTICO ───────────────────────────────────────────────────────
 let kwData = [];
 let sortField = 'impresiones';
@@ -297,8 +284,8 @@ async function cargarDiagnostico() {
     const diasParam = (rango !== 'custom') ? rango : '28';
 
     const [resumenRes, kwRes] = await Promise.all([
-      fetch('/seo/data?dias=' + diasParam).then(r => r.json()),
-      fetch('/seo/keywords?dias=' + diasParam).then(r => r.json())
+      fetchGSC('/seo/data?dias=' + diasParam),
+      fetchGSC('/seo/keywords?dias=' + diasParam)
     ]);
 
     if (resumenRes.ok) {
@@ -312,7 +299,7 @@ async function cargarDiagnostico() {
 
     let deltaMap = {};
     if (rango !== 'custom') {
-      const comp = await fetch('/seo/comparativa').then(r => r.json());
+      const comp = await fetchGSC('/seo/comparativa');
       if (comp.ok) {
         const campo = 'delta' + rango;
         comp.data.forEach(r => { deltaMap[r.keyword] = r[campo]; });
@@ -322,7 +309,7 @@ async function cargarDiagnostico() {
       const desdeB = document.getElementById('fechaDesdeB').value;
       if (desdeA && desdeB) {
         const hoy = new Date().toISOString().split('T')[0];
-        const comp = await fetch(\`/seo/comparativa-custom?desdeA=\${desdeA}&hastaA=\${hoy}&desdeB=\${desdeB}&hastaB=\${hoy}\`).then(r => r.json());
+        const comp = await fetchGSC(\`/seo/comparativa-custom?desdeA=\${desdeA}&hastaA=\${hoy}&desdeB=\${desdeB}&hastaB=\${hoy}\`);
         if (comp.ok) comp.data.forEach(r => { deltaMap[r.keyword] = r.delta; });
       }
     }
@@ -426,7 +413,7 @@ async function cargarPaginas() {
   try {
     const dias = document.getElementById('rangoComparar').value;
     const diasParam = (dias !== 'custom') ? dias : '28';
-    const res = await fetch('/seo/paginas?dias=' + diasParam).then(r => r.json());
+    const res = await fetchGSC('/seo/paginas?dias=' + diasParam);
     if (res.ok) {
       pagData = res.data.map(r => {
         const ctrActual = r.ctr / 100;
@@ -501,7 +488,7 @@ async function abrirModalPagKw(urlCompleta, pagina) {
   try {
     const dias = document.getElementById('rangoComparar').value;
     const diasParam = (dias !== 'custom') ? dias : '28';
-    const res = await fetch('/seo/pagina-keywords?url=' + encodeURIComponent(urlCompleta) + '&dias=' + diasParam).then(r => r.json());
+    const res = await fetchGSC('/seo/pagina-keywords?url=' + encodeURIComponent(urlCompleta) + '&dias=' + diasParam);
     if (res.ok && res.data.length > 0) {
       document.getElementById('modalPagKwBody').innerHTML = '<table><thead><tr><th>Keyword</th><th>Posición</th><th>Impresiones</th></tr></thead><tbody>' +
         res.data.map(k => \`<tr><td>\${k.keyword}</td><td>\${k.posicion}</td><td>\${k.impresiones}</td></tr>\`).join('') +
@@ -518,105 +505,57 @@ function cerrarModalPagKw() {
   document.getElementById('modalPagKw').classList.remove('open');
 }
 
-// ─── ESTRATEGIA ────────────────────────────────────────────────────────
-const CIUDADES = ['Las Condes','Vitacura','La Reina','Lo Barnechea','Chicureo','Antofagasta','Concepción','Temuco','Viña del Mar','La Serena'];
-let planState = { keywords: [], volumen: 30, ciudades: [] };
+// ─── ESTRATEGIA (automatica, sin seleccion manual) ──────────────────────
+let planAutoData = [];
 
 async function cargarEstrategia() {
   window.__estrategiaCargada = true;
 
-  const existente = await fetch('/seo/estrategia').then(r => r.json()).catch(() => null);
+  const existente = await fetchGSC('/seo/estrategia').catch(() => null);
   if (existente && existente.ok && existente.data) {
     const p = existente.data;
     document.getElementById('planGuardadoBox').innerHTML = \`
       <div class="plan-summary">
-        <h3>📌 Ya tienes un plan guardado (actualizado \${new Date(p.actualizadoEn).toLocaleDateString('es-CL')})</h3>
-        <div>\${(p.keywords||[]).map(k => \`<span class="chip">\${k}</span>\`).join('')}</div>
-        <div style="margin-top:8px;font-size:12px;color:#666">\${p.volumen} artículos/mes · Ciudades: \${(p.ciudades||[]).join(', ') || 'ninguna'}</div>
+        <h3>\ud83d\udccc Ya tienes un plan guardado (actualizado \${new Date(p.actualizadoEn).toLocaleDateString('es-CL')})</h3>
+        <div style="font-size:12px;color:#666">\${(p.items || []).length} artículos guardados</div>
       </div>\`;
   }
 
+  await generarPlanAuto();
+}
+
+async function generarPlanAuto() {
+  document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="loading">Generando plan…</td></tr>';
   try {
-    const kwRes = await fetch('/seo/keywords').then(r => r.json());
-    const diagRes = await fetch('/seo/data').then(r => r.json());
-    if (!kwRes.ok) throw new Error(kwRes.error);
-
-    const oportunidad = kwRes.data.filter(r => r.posicion > 3 && r.posicion <= 15 && r.impresiones > 20)
-      .sort((a,b) => b.impresiones - a.impresiones).slice(0, 20);
-
-    document.getElementById('kwPickList').innerHTML = oportunidad.map(r => \`
-      <label class="kw-pick" data-kw="\${r.keyword}">
-        <input type="checkbox" value="\${r.keyword}">
-        <div class="kw-info">
-          <div class="kw-name">\${r.keyword}</div>
-          <div class="kw-meta">Posición \${r.posicion} · \${r.impresiones} impresiones</div>
-        </div>
-      </label>\`).join('') || '<div class="empty">No hay suficientes datos aún</div>';
-
-    document.querySelectorAll('.kw-pick').forEach(el => {
-      el.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'INPUT') el.querySelector('input').checked = !el.querySelector('input').checked;
-        el.classList.toggle('selected', el.querySelector('input').checked);
-      });
-    });
-
-    document.getElementById('ciudadesPick').innerHTML = CIUDADES.map(c => \`
-      <label class="kw-pick" style="display:inline-flex;width:auto;margin-right:8px" data-ciudad="\${c}">
-        <input type="checkbox" value="\${c}"> <span style="font-size:13px">\${c}</span>
-      </label>\`).join('');
-    document.querySelectorAll('[data-ciudad]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'INPUT') el.querySelector('input').checked = !el.querySelector('input').checked;
-        el.classList.toggle('selected', el.querySelector('input').checked);
-      });
-    });
+    const res = await fetchGSC('/seo/plan-automatico');
+    if (!res.ok) throw new Error(res.error || 'Error generando el plan');
+    planAutoData = res.data;
+    document.getElementById('planAutoCount').textContent = planAutoData.length;
+    document.getElementById('planAutoBody').innerHTML = planAutoData.map(item => \`<tr>
+      <td>\${item.fecha}</td>
+      <td>\${item.tema}</td>
+      <td>\${item.marca || '—'}</td>
+      <td>\${item.enlazarA ? item.enlazarA : 'Sin sugerencia'}\${item.enlazarPotencial ? ' <span class="delta-up">(+' + item.enlazarPotencial + ' clics/mes)</span>' : ''}</td>
+    </tr>\`).join('') || '<tr><td colspan="4" class="empty">No hay temas sugeridos configurados</td></tr>';
   } catch(e) {
-    document.getElementById('kwPickList').innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+    document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="empty">Error: ' + e.message + '</td></tr>';
   }
 }
 
-function irAPaso(n) {
-  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  document.getElementById('step-' + n).classList.add('active');
-  document.querySelectorAll('.step-dot').forEach((d,i) => {
-    d.classList.toggle('active', i === n-1);
-    d.classList.toggle('done', i < n-1);
-  });
-}
+document.getElementById('btnRegenerarPlan').addEventListener('click', generarPlanAuto);
 
-document.getElementById('btnStep1Next').addEventListener('click', () => {
-  planState.keywords = [...document.querySelectorAll('#kwPickList input:checked')].map(i => i.value);
-  irAPaso(2);
-});
-document.getElementById('btnStep2Back').addEventListener('click', () => irAPaso(1));
-document.getElementById('btnStep2Next').addEventListener('click', () => {
-  planState.volumen = document.getElementById('volumenMes').value;
-  planState.ciudades = [...document.querySelectorAll('#ciudadesPick input:checked')].map(i => i.value);
-  document.getElementById('planResumenFinal').innerHTML = \`
-    <div class="plan-summary">
-      <h3>Keywords priorizadas (\${planState.keywords.length})</h3>
-      <div>\${planState.keywords.map(k => \`<span class="chip">\${k}</span>\`).join('') || '<span style="color:#999;font-size:13px">Ninguna seleccionada</span>'}</div>
-      <h3 style="margin-top:14px">Volumen</h3>
-      <div style="font-size:13px">\${planState.volumen} artículos este mes</div>
-      <h3 style="margin-top:14px">Ciudades</h3>
-      <div>\${planState.ciudades.map(c => \`<span class="chip">\${c}</span>\`).join('') || '<span style="color:#999;font-size:13px">Ninguna seleccionada</span>'}</div>
-    </div>\`;
-  irAPaso(3);
-});
-document.getElementById('btnStep3Back').addEventListener('click', () => irAPaso(2));
-
-document.getElementById('btnGuardarPlan').addEventListener('click', async () => {
+document.getElementById('btnGuardarPlanAuto').addEventListener('click', async () => {
   const statusEl = document.getElementById('estrategiaStatus');
   try {
     const res = await fetch('/seo/estrategia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(planState)
+      body: JSON.stringify({ items: planAutoData, generadoAutomaticamente: true })
     }).then(r => r.json());
     if (res.ok) {
       statusEl.className = 'status-bar status-ok';
       statusEl.style.display = 'block';
-      statusEl.textContent = '✅ Plan guardado. Ya puedes usarlo para armar el calendario de julio.';
+      statusEl.textContent = '✅ Plan guardado. Ya puedes usarlo para generar los artículos de julio.';
     } else {
       throw new Error(res.error || 'Error desconocido');
     }
