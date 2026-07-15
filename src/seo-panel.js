@@ -225,6 +225,8 @@ function renderSeoPanel() {
           <button class="btn btn-primary btn-sm" id="btnAplicarPrioridades">Aplicar y regenerar</button>
         </div>
         <div class="sub">Cruza tus keywords sugeridas con las páginas comerciales de más potencial — cada artículo ya trae asignado a qué página enlazar internamente.</div>
+
+        <div id="metaEstrategia" style="margin-bottom:20px"></div>
         <div id="planExplicacion" style="margin-bottom:20px"></div>
         <div class="table-wrap">
           <table>
