@@ -200,6 +200,7 @@ function renderSeoPanel() {
           <button class="btn btn-secondary btn-sm" id="btnRegenerarPlan">🔄 Regenerar</button>
         </div>
         <div class="sub">Cruza tus keywords sugeridas con las páginas comerciales de más potencial — cada artículo ya trae asignado a qué página enlazar internamente.</div>
+        <div id="planExplicacion" style="margin-bottom:20px"></div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -524,8 +525,33 @@ async function cargarEstrategia() {
   await generarPlanAuto();
 }
 
+function renderExplicacionPlan(data) {
+  const nuevas = data.length;
+  const paginasMap = {};
+  data.forEach(item => {
+    if (item.enlazarA) {
+      if (!paginasMap[item.enlazarA]) paginasMap[item.enlazarA] = { potencial: item.enlazarPotencial || 0, veces: 0 };
+      paginasMap[item.enlazarA].veces++;
+    }
+  });
+  const paginasUnicas = Object.keys(paginasMap);
+  const potencialTotal = paginasUnicas.reduce((s, p) => s + paginasMap[p].potencial, 0);
+  const topPaginas = paginasUnicas
+    .sort((a,b) => paginasMap[b].potencial - paginasMap[a].potencial)
+    .slice(0, 5);
+  const topTexto = topPaginas.map(p => p + ' (' + paginasMap[p].veces + ' enlace' + (paginasMap[p].veces > 1 ? 's' : '') + ')').join(', ') || 'ninguna por ahora';
+
+  document.getElementById('planExplicacion').innerHTML = \`
+    <div class="plan-summary">
+      <p style="font-size:13px;line-height:1.7;margin-bottom:10px"><strong>Qué va a hacer:</strong> este plan crea \${nuevas} páginas nuevas de contenido a lo largo del mes — artículos de marca (Nice, BFT, Centurion) y de ciudades donde hoy no tienes cobertura. Cada una queda indexada con una keyword objetivo distinta.</p>
+      <p style="font-size:13px;line-height:1.7;margin-bottom:10px"><strong>Resultado esperado:</strong> no es solo tráfico nuevo — cada artículo enlaza internamente a la página comercial existente que más necesita el empuje. En total, este plan refuerza \${paginasUnicas.length} páginas ya publicadas, con un potencial combinado de +\${potencialTotal} clics/mes si logran llegar a posición 1.</p>
+      <p style="font-size:13px;line-height:1.7"><strong>Cómo lo hace:</strong> reparte los enlaces para no sobrecargar una sola página. Las que más refuerzo reciben este mes son: \${topTexto}.</p>
+    </div>\`;
+}
+
 async function generarPlanAuto() {
   document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="loading">Generando plan…</td></tr>';
+  document.getElementById('planExplicacion').innerHTML = '';
   try {
     const res = await fetchGSC('/seo/plan-automatico');
     if (!res.ok) throw new Error(res.error || 'Error generando el plan');
@@ -537,6 +563,7 @@ async function generarPlanAuto() {
       <td>\${item.marca || '—'}</td>
       <td>\${item.enlazarA ? item.enlazarA : 'Sin sugerencia'}\${item.enlazarPotencial ? ' <span class="delta-up">(+' + item.enlazarPotencial + ' clics/mes)</span>' : ''}</td>
     </tr>\`).join('') || '<tr><td colspan="4" class="empty">No hay temas sugeridos configurados</td></tr>';
+    if (planAutoData.length > 0) renderExplicacionPlan(planAutoData);
   } catch(e) {
     document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="empty">Error: ' + e.message + '</td></tr>';
   }
