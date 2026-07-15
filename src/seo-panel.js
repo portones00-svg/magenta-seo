@@ -199,6 +199,10 @@ function renderSeoPanel() {
           <span>Plan automático (<span id="planAutoCount">0</span> artículos)</span>
           <button class="btn btn-secondary btn-sm" id="btnRegenerarPlan">🔄 Regenerar</button>
         </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <input type="text" id="prioridadesInput" placeholder="¿Algo que priorizar este mes? Ej: Vitacura, Lo Barnechea, La Dehesa" style="flex:1;margin-bottom:0">
+          <button class="btn btn-primary btn-sm" id="btnAplicarPrioridades">Aplicar y regenerar</button>
+        </div>
         <div class="sub">Cruza tus keywords sugeridas con las páginas comerciales de más potencial — cada artículo ya trae asignado a qué página enlazar internamente.</div>
         <div id="planExplicacion" style="margin-bottom:20px"></div>
         <div class="table-wrap">
@@ -549,11 +553,19 @@ function renderExplicacionPlan(data) {
     </div>\`;
 }
 
-async function generarPlanAuto() {
+async function generarPlanAuto(prioridades) {
+  if (!prioridades) {
+    const texto = document.getElementById('prioridadesInput').value;
+    prioridades = texto.split(',').map(s => s.trim()).filter(Boolean);
+  }
   document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="loading">Generando plan…</td></tr>';
   document.getElementById('planExplicacion').innerHTML = '';
   try {
-    const res = await fetchGSC('/seo/plan-automatico');
+    const res = await fetchGSC('/seo/plan-automatico', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prioridades })
+    });
     if (!res.ok) throw new Error(res.error || 'Error generando el plan');
     planAutoData = res.data;
     document.getElementById('planAutoCount').textContent = planAutoData.length;
@@ -569,7 +581,8 @@ async function generarPlanAuto() {
   }
 }
 
-document.getElementById('btnRegenerarPlan').addEventListener('click', generarPlanAuto);
+document.getElementById('btnRegenerarPlan').addEventListener('click', () => generarPlanAuto());
+document.getElementById('btnAplicarPrioridades').addEventListener('click', () => generarPlanAuto());
 
 document.getElementById('btnGuardarPlanAuto').addEventListener('click', async () => {
   const statusEl = document.getElementById('estrategiaStatus');

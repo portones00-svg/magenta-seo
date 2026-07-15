@@ -755,7 +755,7 @@ function normalizarTexto(s) {
     .trim();
 }
 
-async function generarPlanAutomatico() {
+async function generarPlanAutomatico(prioridades = []) {
   const paginas = await getTodasLasPaginas(90);
   const comerciales = paginas
     .map(p => {
@@ -771,7 +771,26 @@ async function generarPlanAutomatico() {
 
   const hoy = new Date();
 
-  return KW_SUGERIDAS.map((item, idx) => {
+  // Insertar prioridades del usuario al principio de la lista de temas
+  const prioritarios = [];
+  const yaUsados = new Set();
+  prioridades.forEach(prio => {
+    const prioNorm = normalizarTexto(prio);
+    if (!prioNorm) return;
+    const existente = KW_SUGERIDAS.find(t => normalizarTexto(t.tema).includes(prioNorm) && !yaUsados.has(t.tema));
+    if (existente) {
+      prioritarios.push(existente);
+      yaUsados.add(existente.tema);
+    } else {
+      const nuevoTema = 'reparación portón eléctrico ' + prio.trim();
+      prioritarios.push({ tema: nuevoTema, marca: '', carpeta: 'blog' });
+      yaUsados.add(nuevoTema);
+    }
+  });
+  const resto = KW_SUGERIDAS.filter(t => !yaUsados.has(t.tema));
+  const listaTemas = [...prioritarios, ...resto];
+
+  return listaTemas.map((item, idx) => {
     const temaNorm = normalizarTexto(item.tema);
     const palabras = temaNorm.split(' ').filter(w => w.length > 3);
 
@@ -803,7 +822,18 @@ async function generarPlanAutomatico() {
   });
 }
 
-// Genera el plan del mes automaticamente (sin seleccion manual)
+// Genera el plan del mes automaticamente (con prioridades opcionales del usuario)
+app.post('/seo/plan-automatico', async (req, res) => {
+  try {
+    const prioridades = Array.isArray(req.body.prioridades) ? req.body.prioridades : [];
+    const plan = await generarPlanAutomatico(prioridades);
+    res.json({ ok: true, data: plan });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Compatibilidad: version GET sin prioridades
 app.get('/seo/plan-automatico', async (req, res) => {
   try {
     const plan = await generarPlanAutomatico();
