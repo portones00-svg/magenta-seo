@@ -553,18 +553,15 @@ function renderExplicacionPlan(data) {
     </div>\`;
 }
 
-async function generarPlanAuto(prioridades) {
-  if (!prioridades) {
-    const texto = document.getElementById('prioridadesInput').value;
-    prioridades = texto.split(',').map(s => s.trim()).filter(Boolean);
-  }
+async function generarPlanAuto() {
+  const texto = document.getElementById('prioridadesInput').value;
   document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="loading">Generando plan…</td></tr>';
   document.getElementById('planExplicacion').innerHTML = '';
   try {
     const res = await fetchGSC('/seo/plan-automatico', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prioridades })
+      body: JSON.stringify({ texto })
     });
     if (!res.ok) throw new Error(res.error || 'Error generando el plan');
     planAutoData = res.data;

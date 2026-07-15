@@ -591,6 +591,8 @@ app.listen(PORT, () => console.log('[SERVER] Puerto', PORT));
 // ─── RUTAS SEO / SEARCH CONSOLE ──────────────────────────────────────────────
 const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
 const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina } = require('./gsc-diagnostico');
+const AnthropicSDK = require('@anthropic-ai/sdk');
+const anthropicClient = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
 const { cargarPlan, guardarPlan } = require('./estrategia');
 const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
 
@@ -755,6 +757,25 @@ function normalizarTexto(s) {
     .trim();
 }
 
+async function extraerPrioridades(textoLibre) {
+  if (!textoLibre || !textoLibre.trim()) return [];
+  try {
+    const msg = await anthropicClient.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      system: 'Extraes nombres de comunas, ciudades o marcas de portones mencionados en un texto en español escrito por un usuario (puede tener errores de tipeo y ortografia). Corrige la ortografia de cada nombre (ej: "lo barnechea" -> "Lo Barnechea", "nunoa" -> "Ñuñoa"). Ignora cualquier palabra que no sea un lugar o marca real (relleno conversacional como "quiero que", "me gusta", "tambien dentro de tus ambitos", etc). Responde SOLO con un array JSON de strings, sin texto adicional, sin markdown, sin explicacion. Si no detectas ningun lugar o marca real, responde [].',
+      messages: [{ role: 'user', content: textoLibre }]
+    });
+    const texto = msg.content[0].text.trim();
+    const limpio = texto.replace(/```json|```/g, '').trim();
+    const arr = JSON.parse(limpio);
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()) : [];
+  } catch(e) {
+    console.error('[PRIORIDADES] Error extrayendo con Claude:', e.message);
+    return [];
+  }
+}
+
 async function generarPlanAutomatico(prioridades = []) {
   const paginas = await getTodasLasPaginas(90);
   const comerciales = paginas
@@ -825,7 +846,10 @@ async function generarPlanAutomatico(prioridades = []) {
 // Genera el plan del mes automaticamente (con prioridades opcionales del usuario)
 app.post('/seo/plan-automatico', async (req, res) => {
   try {
-    const prioridades = Array.isArray(req.body.prioridades) ? req.body.prioridades : [];
+    const textoLibre = typeof req.body.texto === 'string' ? req.body.texto : '';
+    const prioridadesManual = Array.isArray(req.body.prioridades) ? req.body.prioridades : [];
+    const prioridadesExtraidas = textoLibre ? await extraerPrioridades(textoLibre) : [];
+    const prioridades = prioridadesExtraidas.length > 0 ? prioridadesExtraidas : prioridadesManual;
     const plan = await generarPlanAutomatico(prioridades);
     res.json({ ok: true, data: plan });
   } catch (err) {
