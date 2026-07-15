@@ -205,10 +205,11 @@ function renderSeoPanel() {
                 <th>Posición</th>
                 <th>CTR actual</th>
                 <th>Potencial si se arregla</th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody id="arreglosRapidosBody">
-              <tr><td colspan="4" class="loading">Cargando…</td></tr>
+              <tr><td colspan="5" class="loading">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -255,6 +256,14 @@ function renderSeoPanel() {
     <div class="modal-title" id="modalPagKwTitle">Keywords de esta página</div>
     <div id="modalPagKwBody" style="max-height:400px;overflow-y:auto"></div>
     <button class="btn btn-secondary" onclick="cerrarModalPagKw()" style="width:100%;margin-top:12px">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal" id="modalSugerencia">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-title">Propuesta de título/meta (sin aplicar todavía)</div>
+    <div id="modalSugerenciaBody"></div>
+    <button class="btn btn-secondary" onclick="cerrarModalSugerencia()" style="width:100%;margin-top:12px">Cerrar</button>
   </div>
 </div>
 
@@ -530,8 +539,44 @@ function cerrarModalPagKw() {
   document.getElementById('modalPagKw').classList.remove('open');
 }
 
+async function abrirModalSugerencia(pagina, posicion, ctr) {
+  document.getElementById('modalSugerenciaBody').innerHTML = '<p class="loading">Leyendo la página en vivo y generando propuesta…</p>';
+  document.getElementById('modalSugerencia').classList.add('open');
+  try {
+    const res = await fetchGSC('/seo/sugerir-titulo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagina, posicion, ctr })
+    });
+    if (!res.ok) throw new Error(res.error || 'Error generando la propuesta');
+    const d = res.data;
+    document.getElementById('modalSugerenciaBody').innerHTML = \`
+      <p style="font-size:12px;color:#999;margin-bottom:12px">\${pagina}</p>
+      <div style="background:#faece7;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:11px;color:#993c1d;font-weight:500;margin-bottom:6px">ACTUAL</div>
+        <div style="font-size:13px;margin-bottom:4px"><strong>Título:</strong> \${d.actual.titulo}</div>
+        <div style="font-size:13px"><strong>Meta:</strong> \${d.actual.meta}</div>
+      </div>
+      <div style="background:#e1f5ee;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:11px;color:#0f6e56;font-weight:500;margin-bottom:6px">PROPUESTA</div>
+        <div style="font-size:13px;margin-bottom:4px"><strong>Título:</strong> \${d.sugerencia.tituloSugerido}</div>
+        <div style="font-size:13px"><strong>Meta:</strong> \${d.sugerencia.metaSugerida}</div>
+      </div>
+      <p style="font-size:12px;color:#666;font-style:italic">\${d.sugerencia.razon}</p>
+      <p style="font-size:11px;color:#999;margin-top:12px">Esto es solo una propuesta para tu revisión — nada se aplicó al sitio.</p>
+    \`;
+  } catch(e) {
+    document.getElementById('modalSugerenciaBody').innerHTML = '<p class="empty">Error: ' + e.message + '</p>';
+  }
+}
+
+function cerrarModalSugerencia() {
+  document.getElementById('modalSugerencia').classList.remove('open');
+}
+
 // ─── ESTRATEGIA (automatica, sin seleccion manual) ──────────────────────
 let planAutoData = [];
+let arreglosData = [];
 
 async function cargarEstrategia() {
   window.__estrategiaCargada = true;
@@ -601,14 +646,22 @@ async function generarPlanAuto() {
     </tr>\`).join('') || '<tr><td colspan="4" class="empty">No hay temas sugeridos configurados</td></tr>';
     if (planAutoData.length > 0) renderExplicacionPlan(planAutoData);
 
+    arreglosData = arreglos;
     document.getElementById('arreglosRapidosBody').innerHTML = arreglos.length > 0
-      ? arreglos.map(a => \`<tr>
+      ? arreglos.map((a, i) => \`<tr>
           <td>\${a.pagina}</td>
           <td><span class="badge badge-ok">\${a.posicion}</span></td>
           <td>\${a.ctr}%</td>
           <td><span class="delta-up">+\${a.potencial} clics/mes</span></td>
+          <td><button class="btn btn-secondary btn-sm" data-idx-arreglo="\${i}">Ver propuesta</button></td>
         </tr>\`).join('')
-      : '<tr><td colspan="4" class="empty">No se detectaron arreglos urgentes esta semana</td></tr>';
+      : '<tr><td colspan="5" class="empty">No se detectaron arreglos urgentes esta semana</td></tr>';
+    document.querySelectorAll('[data-idx-arreglo]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const a = arreglosData[parseInt(btn.dataset.idxArreglo)];
+        abrirModalSugerencia(a.pagina, a.posicion, a.ctr);
+      });
+    });
   } catch(e) {
     document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="empty">Error: ' + e.message + '</td></tr>';
     document.getElementById('arreglosRapidosBody').innerHTML = '<tr><td colspan="4" class="empty">Error</td></tr>';

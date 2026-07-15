@@ -853,6 +853,45 @@ async function generarPlanAutomatico(prioridades = []) {
   return { articulos, arreglosRapidos };
 }
 
+async function obtenerTituloMetaActual(urlCompleta) {
+  const res = await fetch(urlCompleta);
+  const html = await res.text();
+  const tituloMatch = html.match(/<title>([^<]*)<\/title>/i);
+  const metaMatch = html.match(/<meta\s+name=["\']description["\']\s+content=["\']([^"\']*)["\']/i);
+  return {
+    titulo: tituloMatch ? tituloMatch[1].trim() : '(no encontrado)',
+    meta: metaMatch ? metaMatch[1].trim() : '(no encontrado)',
+  };
+}
+
+async function sugerirMejoraTituloMeta(pagina, posicion, ctrActual) {
+  const base = (process.env.SITE_URL || 'https://www.reparaciondeportones.cl').replace(/\/+$/, '');
+  const urlCompleta = base + pagina;
+  const actual = await obtenerTituloMetaActual(urlCompleta);
+
+  const msg = await anthropicClient.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 500,
+    system: 'Eres un experto en SEO para una empresa de reparacion e instalacion de portones electricos en Chile. Te dan el titulo y meta description actuales de una pagina, su posicion en Google y su CTR actual. Propon un titulo (maximo 60 caracteres) y meta description (maximo 155 caracteres) mejorados que generen mas clics, manteniendo la keyword principal, en espanol chileno, tono profesional pero cercano. Responde SOLO con JSON, sin markdown: {"tituloSugerido": "...", "metaSugerida": "...", "razon": "explicacion breve de 1-2 frases"}',
+    messages: [{ role: 'user', content: 'Pagina: ' + pagina + '\nTitulo actual: ' + actual.titulo + '\nMeta actual: ' + actual.meta + '\nPosicion en Google: ' + posicion + '\nCTR actual: ' + ctrActual + '%' }]
+  });
+  const texto = msg.content[0].text.trim().replace(/```json|```/g, '').trim();
+  const sugerencia = JSON.parse(texto);
+  return { actual, sugerencia };
+}
+
+// Propone mejora de titulo/meta SIN aplicarla al sitio - solo para revisar
+app.post('/seo/sugerir-titulo', async (req, res) => {
+  try {
+    const { pagina, posicion, ctr } = req.body;
+    if (!pagina) return res.json({ ok: false, error: 'Falta el parametro pagina' });
+    const resultado = await sugerirMejoraTituloMeta(pagina, posicion, ctr);
+    res.json({ ok: true, data: resultado });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 // Genera el plan del mes automaticamente (con prioridades opcionales del usuario)
 app.post('/seo/plan-automatico', async (req, res) => {
   try {
