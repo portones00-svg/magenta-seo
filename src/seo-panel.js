@@ -624,6 +624,28 @@ function renderExplicacionPlan(data) {
     </div>\`;
 }
 
+function renderMetaEstrategia(articulos, arreglos) {
+  const paginasArt = {};
+  articulos.forEach(item => {
+    if (item.enlazarA && !paginasArt[item.enlazarA]) paginasArt[item.enlazarA] = item.enlazarPotencial || 0;
+  });
+  const potencialArticulos = Object.values(paginasArt).reduce((s, v) => s + v, 0);
+  const potencialArreglos = arreglos.reduce((s, a) => s + (a.potencial || 0), 0);
+
+  const p30 = Math.round(potencialArreglos * 0.7 + potencialArticulos * 0.10);
+  const p60 = Math.round(potencialArreglos * 0.9 + potencialArticulos * 0.35);
+  const p90 = Math.round(potencialArreglos * 1.0 + potencialArticulos * 0.60);
+
+  document.getElementById('metaEstrategia').innerHTML = \`
+    <div class="grid3">
+      <div class="metric"><div class="metric-val">+\${p30}</div><div class="metric-lab">Clics/mes est. en 30 días</div></div>
+      <div class="metric"><div class="metric-val">+\${p60}</div><div class="metric-lab">Clics/mes est. en 60 días</div></div>
+      <div class="metric"><div class="metric-val">+\${p90}</div><div class="metric-lab">Clics/mes est. en 90 días</div></div>
+    </div>
+    <p style="font-size:11px;color:#999;font-style:italic;margin-top:-8px;margin-bottom:16px">Estimación basada en el potencial detectado hoy — los arreglos de título/meta se reflejan más rápido, el contenido nuevo toma más tiempo en ganar autoridad. Vuelve a revisar este número en 30 días para auditar el avance real.</p>
+  \`;
+}
+
 async function generarPlanAuto() {
   const texto = document.getElementById('prioridadesInput').value;
   document.getElementById('planAutoBody').innerHTML = '<tr><td colspan="4" class="loading">Generando plan…</td></tr>';
@@ -647,6 +669,7 @@ async function generarPlanAuto() {
     if (planAutoData.length > 0) renderExplicacionPlan(planAutoData);
 
     arreglosData = arreglos;
+    renderMetaEstrategia(planAutoData, arreglos);
     document.getElementById('arreglosRapidosBody').innerHTML = arreglos.length > 0
       ? arreglos.map((a, i) => \`<tr>
           <td>\${a.pagina}</td>
