@@ -248,6 +248,26 @@ function renderSeoPanel() {
         </div>
         <div id="estrategiaStatus" class="status-bar"></div>
       </div>
+
+      <div class="card">
+        <div class="card-title">📊 Historial de estrategias guardadas</div>
+        <div class="sub">Cada vez que guardas un plan queda una foto de línea base — vuelve en 30/60/90 días a auditar si se cumplió la meta.</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Guardado el</th>
+                <th>Artículos</th>
+                <th>Meta 30 días</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="historialEstrategiaBody">
+              <tr><td colspan="4" class="loading">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -258,6 +278,14 @@ function renderSeoPanel() {
     <div class="modal-title" id="modalPagKwTitle">Keywords de esta página</div>
     <div id="modalPagKwBody" style="max-height:400px;overflow-y:auto"></div>
     <button class="btn btn-secondary" onclick="cerrarModalPagKw()" style="width:100%;margin-top:12px">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal" id="modalAuditoria">
+  <div class="modal-box" style="max-width:650px">
+    <div class="modal-title">Auditoría: proyectado vs. real</div>
+    <div id="modalAuditoriaBody"></div>
+    <button class="btn btn-secondary" onclick="cerrarModalAuditoria()" style="width:100%;margin-top:12px">Cerrar</button>
   </div>
 </div>
 
@@ -594,6 +622,61 @@ async function cargarEstrategia() {
   }
 
   await generarPlanAuto();
+  await cargarHistorialEstrategias();
+}
+
+async function cargarHistorialEstrategias() {
+  const tbody = document.getElementById('historialEstrategiaBody');
+  tbody.innerHTML = '<tr><td colspan="4" class="loading">Cargando…</td></tr>';
+  try {
+    const res = await fetchGSC('/seo/estrategia/historial');
+    if (!res.ok) throw new Error(res.error || 'Error cargando historial');
+    const historial = res.data;
+    tbody.innerHTML = historial.length > 0
+      ? historial.map(h => \`<tr>
+          <td>\${new Date(h.fechaGuardado).toLocaleDateString('es-CL')}</td>
+          <td>\${h.articulosCount}</td>
+          <td>+\${h.proyeccion30} clics/mes</td>
+          <td><button class="btn btn-secondary btn-sm" onclick="abrirModalAuditoria('\${h.id}')">Ver auditoría</button></td>
+        </tr>\`).join('')
+      : '<tr><td colspan="4" class="empty">Aún no has guardado ninguna estrategia</td></tr>';
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+async function abrirModalAuditoria(id) {
+  document.getElementById('modalAuditoriaBody').innerHTML = '<p class="loading">Calculando resultados reales…</p>';
+  document.getElementById('modalAuditoria').classList.add('open');
+  try {
+    const res = await fetchGSC('/seo/estrategia/auditoria/' + id);
+    if (!res.ok) throw new Error(res.error || 'Error calculando auditoria');
+    const d = res.data;
+    const cumplimientoColor = d.cumplimiento >= 100 ? '#0f6e56' : (d.cumplimiento >= 50 ? '#854f0b' : '#993c1d');
+    const filasComparativa = d.comparativa.map(c => \`<tr>
+      <td>\${c.pagina}</td>
+      <td>\${c.posicionBase ?? '—'} → \${c.posicionActual ?? '—'}</td>
+      <td>\${c.clicsBase} → \${c.clicsActual}</td>
+    </tr>\`).join('');
+    document.getElementById('modalAuditoriaBody').innerHTML = \`
+      <p style="font-size:12px;color:#999;margin-bottom:12px">Guardado el \${new Date(d.fechaGuardado).toLocaleDateString('es-CL')} — \${d.diasTranscurridos} días transcurridos</p>
+      <div class="grid3" style="margin-bottom:16px">
+        <div class="metric"><div class="metric-val">\${d.totalClicsBase}</div><div class="metric-lab">Clics/mes al guardar</div></div>
+        <div class="metric"><div class="metric-val">\${d.totalClicsActual}</div><div class="metric-lab">Clics/mes ahora</div></div>
+        <div class="metric"><div class="metric-val" style="color:\${cumplimientoColor}">\${d.cumplimiento ?? '—'}%</div><div class="metric-lab">Cumplimiento meta \${d.hito}d</div></div>
+      </div>
+      <table>
+        <thead><tr><th>Página</th><th>Posición (antes → ahora)</th><th>Clics (antes → ahora)</th></tr></thead>
+        <tbody>\${filasComparativa || '<tr><td colspan="3" class="empty">Sin páginas para comparar</td></tr>'}</tbody>
+      </table>
+    \`;
+  } catch(e) {
+    document.getElementById('modalAuditoriaBody').innerHTML = '<p class="empty">Error: ' + e.message + '</p>';
+  }
+}
+
+function cerrarModalAuditoria() {
+  document.getElementById('modalAuditoria').classList.remove('open');
 }
 
 function renderExplicacionPlan(data) {
@@ -703,12 +786,13 @@ document.getElementById('btnGuardarPlanAuto').addEventListener('click', async ()
     const res = await fetch('/seo/estrategia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: planAutoData, generadoAutomaticamente: true })
+      body: JSON.stringify({ items: planAutoData, arreglos: arreglosData, generadoAutomaticamente: true })
     }).then(r => r.json());
     if (res.ok) {
       statusEl.className = 'status-bar status-ok';
       statusEl.style.display = 'block';
-      statusEl.textContent = '✅ Plan guardado. Ya puedes usarlo para generar los artículos de julio.';
+      statusEl.textContent = '✅ Plan guardado con foto de línea base. Vuelve en 30 días para auditar el avance.';
+      await cargarHistorialEstrategias();
     } else {
       throw new Error(res.error || 'Error desconocido');
     }
