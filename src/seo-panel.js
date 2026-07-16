@@ -289,6 +289,18 @@ function renderSeoPanel() {
   </div>
 </div>
 
+<div class="modal" id="modalConfirmar">
+  <div class="modal-box" style="max-width:420px;text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+    <div class="modal-title" style="text-align:center" id="modalConfirmarTitulo">Confirmar acción</div>
+    <p id="modalConfirmarMensaje" style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"></p>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-secondary" id="btnConfirmarCancelar" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" id="btnConfirmarAceptar" style="flex:1">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modalSugerencia">
   <div class="modal-box" style="max-width:600px">
     <div class="modal-title">Propuesta de título/meta (sin aplicar todavía)</div>
@@ -326,6 +338,29 @@ async function fetchGSC(url, opts) {
     return new Promise(() => {});
   }
   return res;
+}
+
+function confirmarAccion(mensaje, titulo) {
+  return new Promise((resolve) => {
+    document.getElementById('modalConfirmarTitulo').textContent = titulo || 'Confirmar acción';
+    document.getElementById('modalConfirmarMensaje').textContent = mensaje;
+    document.getElementById('modalConfirmar').classList.add('open');
+
+    const btnCancelar = document.getElementById('btnConfirmarCancelar');
+    const btnAceptar = document.getElementById('btnConfirmarAceptar');
+
+    function limpiar(resultado) {
+      document.getElementById('modalConfirmar').classList.remove('open');
+      btnCancelar.removeEventListener('click', onCancelar);
+      btnAceptar.removeEventListener('click', onAceptar);
+      resolve(resultado);
+    }
+    function onCancelar() { limpiar(false); }
+    function onAceptar() { limpiar(true); }
+
+    btnCancelar.addEventListener('click', onCancelar);
+    btnAceptar.addEventListener('click', onAceptar);
+  });
 }
 
 // ─── DIAGNÓSTICO ───────────────────────────────────────────────────────
@@ -606,9 +641,11 @@ async function abrirModalSugerencia(pagina, posicion, ctr) {
   }
 }
 
+let cambioAplicadoExitoso = false;
+
 async function aplicarSugerenciaActual() {
   if (!sugerenciaActual) return;
-  const confirmado = confirm('¿Seguro que quieres aplicar este título y meta description a ' + sugerenciaActual.pagina + '? Se va a subir directo a tu sitio en vivo ahora mismo.');
+  const confirmado = await confirmarAccion('¿Seguro que quieres aplicar este título y meta description a ' + sugerenciaActual.pagina + '? Se va a subir directo a tu sitio en vivo ahora mismo.', 'Aplicar cambio al sitio');
   if (!confirmado) return;
 
   const btn = document.getElementById('btnAplicarSugerencia');
@@ -627,6 +664,7 @@ async function aplicarSugerenciaActual() {
       statusEl.style.display = 'block';
       statusEl.textContent = '✅ Aplicado. La página ya tiene el título y meta nuevos.';
       btn.style.display = 'none';
+      cambioAplicadoExitoso = true;
     } else {
       throw new Error(res.error || 'Error desconocido');
     }
@@ -641,6 +679,10 @@ async function aplicarSugerenciaActual() {
 
 function cerrarModalSugerencia() {
   document.getElementById('modalSugerencia').classList.remove('open');
+  if (cambioAplicadoExitoso) {
+    cambioAplicadoExitoso = false;
+    generarPlanAuto();
+  }
 }
 
 // ─── ESTRATEGIA (automatica, sin seleccion manual) ──────────────────────
@@ -692,7 +734,7 @@ async function cargarHistorialEstrategias() {
 }
 
 async function eliminarEstrategiaHistorial(id) {
-  const confirmado = confirm('¿Seguro que quieres eliminar esta estrategia guardada? Esta acción no se puede deshacer y perderás la línea base para auditar ese período.');
+  const confirmado = await confirmarAccion('¿Seguro que quieres eliminar esta estrategia guardada? Esta acción no se puede deshacer y perderás la línea base para auditar ese período.', 'Eliminar estrategia');
   if (!confirmado) return;
   try {
     const res = await fetch('/seo/estrategia/historial/' + id, { method: 'DELETE' }).then(r => r.json());
