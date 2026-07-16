@@ -415,8 +415,8 @@ function seleccionarDia(fecha, el) {
         '<p style="font-size:12px;color:#666">Estado: ' + data.item.estado + '</p>' +
         (data.item.canonical ? '<a href="' + data.item.canonical + '" target="_blank" style="color:#216416;font-size:13px">Ver artículo publicado →</a>' : '') +
         '<div class="grid2" style="margin-top:12px">' +
-          '<button class="btn btn-primary" onclick="verPreview(\'' + data.item.id + '\');cerrarModalDia()">Ver / editar</button>' +
-          '<button class="btn btn-danger" onclick="fetch(\'/descartar/' + data.item.id + '\',{method:\'DELETE\'}).then(()=>location.reload())">Eliminar</button>' +
+          '<button class="btn btn-primary" onclick="verPreview(\\'' + data.item.id + '\\');cerrarModalDia()">Ver / editar</button>' +
+          '<button class="btn btn-danger" onclick="fetch(\\'/descartar/' + data.item.id + '\\',{method:\\'DELETE\\'}).then(()=>location.reload())">Eliminar</button>' +
         '</div>';
     } else {
       document.getElementById('fechaProg').value = fecha;
