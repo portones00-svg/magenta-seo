@@ -46,4 +46,16 @@ function guardarEnHistorial(entrada) {
   }
 }
 
-module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial };
+function eliminarDeHistorial(id) {
+  try {
+    const historial = cargarHistorial();
+    const filtrado = historial.filter(h => h.id !== id);
+    fs.writeFileSync(HISTORIAL_FILE, JSON.stringify(filtrado, null, 2));
+    return true;
+  } catch(e) {
+    console.error('[HISTORIAL] Error eliminando:', e.message);
+    return false;
+  }
+}
+
+module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial };

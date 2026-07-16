@@ -637,11 +637,29 @@ async function cargarHistorialEstrategias() {
           <td>\${new Date(h.fechaGuardado).toLocaleDateString('es-CL')}</td>
           <td>\${h.articulosCount}</td>
           <td>+\${h.proyeccion30} clics/mes</td>
-          <td><button class="btn btn-secondary btn-sm" onclick="abrirModalAuditoria('\${h.id}')">Ver auditoría</button></td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="abrirModalAuditoria('\${h.id}')">Ver auditoría</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarEstrategiaHistorial('\${h.id}')">Eliminar</button>
+          </td>
         </tr>\`).join('')
       : '<tr><td colspan="4" class="empty">Aún no has guardado ninguna estrategia</td></tr>';
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="4" class="empty">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+async function eliminarEstrategiaHistorial(id) {
+  const confirmado = confirm('¿Seguro que quieres eliminar esta estrategia guardada? Esta acción no se puede deshacer y perderás la línea base para auditar ese período.');
+  if (!confirmado) return;
+  try {
+    const res = await fetch('/seo/estrategia/historial/' + id, { method: 'DELETE' }).then(r => r.json());
+    if (res.ok) {
+      await cargarHistorialEstrategias();
+    } else {
+      alert('Error eliminando: ' + (res.error || 'desconocido'));
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
   }
 }
 

@@ -621,7 +621,7 @@ const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
 const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina } = require('./gsc-diagnostico');
 const AnthropicSDK = require('@anthropic-ai/sdk');
 const anthropicClient = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
-const { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial } = require('./estrategia');
+const { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial } = require('./estrategia');
 const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
 
 // Iniciar autorización con Google
@@ -1007,6 +1007,16 @@ app.post('/seo/estrategia', async (req, res) => {
     });
 
     res.json({ ok: true, data });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Elimina una estrategia guardada del historial
+app.delete('/seo/estrategia/historial/:id', (req, res) => {
+  try {
+    const ok = eliminarDeHistorial(req.params.id);
+    res.json({ ok });
   } catch(err) {
     res.json({ ok: false, error: err.message });
   }
