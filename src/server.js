@@ -763,7 +763,7 @@ cron.schedule('0 9 * * *', async () => {
   console.log('[CRON-AUTO] Generando articulos automaticos de Estrategia para hoy...');
   const hoyAuto = new Date().toISOString().split('T')[0];
   const colaAuto = obtenerCola();
-  const pendientesAuto = colaAuto.filter(i => i.fechaProgramada === hoyAuto && (i.estado === 'pendiente_auto' || i.estado === 'generado'));
+  const pendientesAuto = colaAuto.filter(i => i.fechaProgramada === hoyAuto && (i.estado === 'pendiente_auto' || i.estado === 'generado' || (i.estado === 'aprobado' && !i.contenido)));
 
   if (!pendientesAuto.length) {
     console.log('[CRON-AUTO] Sin articulos automaticos pendientes para hoy');
