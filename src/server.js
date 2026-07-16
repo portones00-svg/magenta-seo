@@ -282,7 +282,10 @@ app.get('/', (req, res) => {
     <img class="preview-img" id="modalImg" src="" onerror="console.error('[IMG] Fallo al cargar:', this.src); this.style.display='none'; document.getElementById('modalImgError').style.display='block'">
     <div id="modalImgError" style="display:none;padding:12px;background:#faece7;color:#993c1d;border-radius:8px;font-size:12px;margin-bottom:12px">⚠️ La imagen no cargó — revisa la consola del navegador para ver el link exacto que falló.</div>
     <div class="preview-content" id="modalContent"></div>
-    <button class="btn btn-secondary" id="btnRegenerarItem" onclick="regenerarItemActual()" style="width:100%;margin-bottom:8px">🔄 Regenerar (texto + imagen)</button>
+    <div class="grid2" style="margin-bottom:8px">
+      <button class="btn btn-secondary" id="btnRegenerarItem" onclick="regenerarItemActual()">🔄 Regenerar</button>
+      <button class="btn btn-secondary" id="btnPublicarAhora" onclick="publicarAhoraActual()">🚀 Publicar ahora</button>
+    </div>
     <div class="grid2">
       <button class="btn btn-primary" id="btnAprobar" onclick="aprobarItem()">✅ Aprobar — queda en cola</button>
       <button class="btn btn-danger" onclick="descartarItem()">🗑️ Descartar</button>
@@ -301,8 +304,43 @@ app.get('/', (req, res) => {
   </div>
 </div>
 
+<div class="modal" id="modalConfirmar" style="z-index:200">
+  <div class="modal-box" style="max-width:420px;text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+    <div class="modal-title" style="text-align:center" id="modalConfirmarTitulo">Confirmar acción</div>
+    <p id="modalConfirmarMensaje" style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px"></p>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-secondary" id="btnConfirmarCancelar" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" id="btnConfirmarAceptar" style="flex:1">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let itemActualId = null;
+
+function confirmarAccion(mensaje, titulo) {
+  return new Promise((resolve) => {
+    document.getElementById('modalConfirmarTitulo').textContent = titulo || 'Confirmar acción';
+    document.getElementById('modalConfirmarMensaje').textContent = mensaje;
+    document.getElementById('modalConfirmar').classList.add('open');
+
+    const btnCancelar = document.getElementById('btnConfirmarCancelar');
+    const btnAceptar = document.getElementById('btnConfirmarAceptar');
+
+    function limpiar(resultado) {
+      document.getElementById('modalConfirmar').classList.remove('open');
+      btnCancelar.removeEventListener('click', onCancelar);
+      btnAceptar.removeEventListener('click', onAceptar);
+      resolve(resultado);
+    }
+    function onCancelar() { limpiar(false); }
+    function onAceptar() { limpiar(true); }
+
+    btnCancelar.addEventListener('click', onCancelar);
+    btnAceptar.addEventListener('click', onAceptar);
+  });
+}
 
 function onKwChange(sel) {
   const opt = sel.options[sel.selectedIndex];
@@ -381,9 +419,34 @@ function verPreview(id) {
   });
 }
 
+async function publicarAhoraActual() {
+  if (!itemActualId) return;
+  const confirmado = await confirmarAccion('¿Publicar este artículo ahora mismo, sin esperar el cron automático? Se sube directo a tu sitio en vivo.', 'Publicar ahora');
+  if (!confirmado) return;
+
+  const btn = document.getElementById('btnPublicarAhora');
+  btn.disabled = true;
+  btn.textContent = '⏳ Publicando...';
+  try {
+    const res = await fetch('/item/' + itemActualId + '/publicar-ahora', { method: 'POST' }).then(r => r.json());
+    if (res.ok) {
+      showStatus('statusModal', 'ok', '✅ Publicado: ' + res.canonical);
+      setTimeout(() => { cerrarModal(); location.reload(); }, 2000);
+    } else {
+      showStatus('statusModal', 'error', '❌ Error: ' + res.error);
+    }
+  } catch(e) {
+    showStatus('statusModal', 'error', '❌ Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Publicar ahora';
+  }
+}
+
 async function regenerarItemActual() {
   if (!itemActualId) return;
-  if (!confirm('¿Regenerar este artículo completo (texto e imagen)? Se reemplaza lo actual.')) return;
+  const confirmado = await confirmarAccion('¿Regenerar este artículo completo (texto e imagen)? Se reemplaza lo actual.', 'Regenerar artículo');
+  if (!confirmado) return;
   const btn = document.getElementById('btnRegenerarItem');
   btn.disabled = true;
   btn.textContent = '⏳ Regenerando (puede tardar ~30-40 seg)...';
@@ -514,6 +577,45 @@ app.post('/generar-para-cola', async (req, res) => {
 
 // Ver item de la cola
 // Fuerza regenerar meta, contenido e imagen de un item, sin importar si ya tenia contenido
+// Publica manualmente un item ahora mismo (sin esperar el cron de las 10am) - para pruebas
+app.post('/item/:id/publicar-ahora', async (req, res) => {
+  try {
+    const item = obtenerItemPorId(req.params.id);
+    if (!item) return res.json({ ok: false, error: 'No encontrado' });
+    if (!item.meta || !item.contenido) return res.json({ ok: false, error: 'Este item aun no tiene contenido generado. Dale Ver o Regenerar primero.' });
+
+    console.log('[PUBLICAR-MANUAL] Publicando:', item.tema);
+    const htmlCompleto = buildArticlePage({
+      title: item.meta.h1 || item.meta.title,
+      description: item.meta.description,
+      canonical: item.canonical,
+      isoDate: item.isoDate,
+      dateStr: item.dateStr,
+      image: item.imagen,
+      content: item.contenido,
+      marca: item.marca || null,
+      backUrl: '../../blog/',
+      backLabel: 'Volver al blog',
+      relacionados: []
+    });
+
+    await publicarArticulo({ slug: item.meta.slug, carpeta: item.carpeta, htmlContent: htmlCompleto });
+    await actualizarSitemap({ canonical: item.canonical });
+    actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+
+    historial.push({
+      fecha: new Date().toLocaleString('es-CL'),
+      ok: true, canonical: item.canonical, title: item.meta.title, duracion: '-'
+    });
+
+    console.log('[PUBLICAR-MANUAL] ✅ Publicado:', item.canonical);
+    res.json({ ok: true, canonical: item.canonical });
+  } catch(err) {
+    console.error('[PUBLICAR-MANUAL] Error:', err.message);
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/item/:id/regenerar', async (req, res) => {
   try {
     const item = obtenerItemPorId(req.params.id);
