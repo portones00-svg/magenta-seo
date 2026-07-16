@@ -447,7 +447,7 @@ function consultarItemHastaListo(id, btnEl) {
     document.getElementById('modalContent').innerHTML = item.contenido;
 
     if (item.imagenLista || item.imagen) {
-      document.getElementById('modalImg').src = item.imagen || '';
+      document.getElementById('modalImg').src = item.imagen ? (item.imagen + (item.imagen.includes('?') ? '&' : '?') + 't=' + Date.now()) : '';
       if (btnEl) btnEl.disabled = false;
     } else if (item.generando) {
       document.getElementById('modalImg').src = '';
