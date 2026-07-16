@@ -5,6 +5,7 @@ const { generarArticulo, generarMetadata } = require('./generator');
 const { generarYSubirImagen } = require('./imagen');
 const { buildArticlePage, buildDate } = require('./builder');
 const { publicarArticulo, leerArchivo, subirArchivo } = require('./publisher');
+const { registrarAplicado, fueAplicadoRecientemente } = require('./titulos-aplicados');
 const { actualizarSitemap } = require('./sitemap');
 const { testConexion } = require('./publisher');
 const {
@@ -842,7 +843,7 @@ async function generarPlanAutomatico(prioridades = []) {
   // Arreglos rapidos: paginas que YA rankean bien (posicion <= 6) pero con
   // CTR muy por debajo de lo esperado - se arreglan con titulo/meta, no con articulos nuevos
   const arreglosRapidos = comerciales
-    .filter(p => p.posicion <= 6 && p.potencial >= 20)
+    .filter(p => p.posicion <= 6 && p.potencial >= 20 && !fueAplicadoRecientemente(p.pagina))
     .slice(0, 8)
     .map(p => ({ pagina: p.pagina, posicion: p.posicion, ctr: p.ctr, potencial: p.potencial }));
 
@@ -942,6 +943,7 @@ app.post('/seo/aplicar-titulo', async (req, res) => {
     }
 
     await subirArchivo(pagina, htmlNuevo);
+    registrarAplicado(pagina);
     res.json({ ok: true, pagina });
   } catch (err) {
     console.error('[APLICAR-TITULO] Error:', err.message);
