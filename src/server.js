@@ -402,10 +402,19 @@ async function generarYAgregarACola() {
   }
 }
 
-function verPreview(id) {
+function verPreview(id, btnEl) {
   itemActualId = id;
+  const textoOriginal = btnEl ? btnEl.textContent : null;
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳ Generando (puede tardar ~30-40 seg)...';
+  }
   fetch('/item/' + id).then(r => r.json()).then(data => {
-    if (!data.ok) return;
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = textoOriginal; }
+    if (!data.ok) {
+      alert('❌ Error generando el artículo: ' + (data.error || 'desconocido'));
+      return;
+    }
     const item = data.item;
     document.getElementById('modalTitle').textContent = item.tema;
     document.getElementById('modalMeta').innerHTML =
@@ -416,6 +425,9 @@ function verPreview(id) {
     document.getElementById('modalImg').src = item.imagen || '';
     document.getElementById('modalContent').innerHTML = item.contenido || '<em>Sin contenido</em>';
     document.getElementById('modalPreview').classList.add('open');
+  }).catch(err => {
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = textoOriginal; }
+    alert('❌ Error de conexión: ' + err.message);
   });
 }
 
@@ -501,7 +513,7 @@ function seleccionarDia(fecha, el) {
         '<p style="font-size:12px;color:#666">Estado: ' + data.item.estado + '</p>' +
         (data.item.canonical ? '<a href="' + data.item.canonical + '" target="_blank" style="color:#216416;font-size:13px">Ver artículo publicado →</a>' : '') +
         '<div class="grid2" style="margin-top:12px">' +
-          '<button class="btn btn-primary" onclick="verPreview(\\'' + data.item.id + '\\');cerrarModalDia()">Ver / editar</button>' +
+          '<button class="btn btn-primary" onclick="verPreview(\\'' + data.item.id + '\\', this);cerrarModalDia()">Ver / editar</button>' +
           '<button class="btn btn-danger" onclick="fetch(\\'/descartar/' + data.item.id + '\\',{method:\\'DELETE\\'}).then(()=>location.reload())">Eliminar</button>' +
         '</div>';
     } else {
@@ -541,7 +553,7 @@ function renderCola() {
         <td style="font-size:12px">${i.tema}</td>
         <td><span class="badge ${i.estado==='publicado'?'badge-ok':i.estado==='aprobado'?'badge-aprov':'badge-pend'}">${i.estado}</span></td>
         <td>
-          <button onclick="verPreview('${i.id}')" style="font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">👁️ Ver</button>
+          <button onclick="verPreview('${i.id}', this)" style="font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">👁️ Ver</button>
           ${i.estado!=='publicado'?`<button onclick="fetch('/descartar/${i.id}',{method:'DELETE'}).then(()=>location.reload())" style="font-size:11px;padding:4px 10px;border:1px solid #f5c4b3;border-radius:4px;cursor:pointer;background:#faece7;color:#993c1d;margin-left:4px">🗑️</button>`:''}
         </td>
       </tr>`).join('')}
