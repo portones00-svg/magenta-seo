@@ -590,6 +590,7 @@ function renderCola() {
         <td><span class="badge ${i.estado==='publicado'?'badge-ok':i.estado==='aprobado'?'badge-aprov':'badge-pend'}">${i.estado}</span></td>
         <td>
           <button onclick="verPreview('${i.id}', this)" style="font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">👁️ Ver</button>
+          ${i.estado==='publicado'&&i.canonical?`<a href="${i.canonical}" target="_blank" style="font-size:11px;padding:4px 10px;border:1px solid #a9d9c3;border-radius:4px;cursor:pointer;background:#e1f5ee;color:#0f6e56;margin-left:4px;text-decoration:none;display:inline-block">🔗 Ver publicado</a>`:''}
           ${i.estado!=='publicado'?`<button onclick="fetch('/descartar/${i.id}',{method:'DELETE'}).then(()=>location.reload())" style="font-size:11px;padding:4px 10px;border:1px solid #f5c4b3;border-radius:4px;cursor:pointer;background:#faece7;color:#993c1d;margin-left:4px">🗑️</button>`:''}
         </td>
       </tr>`).join('')}
