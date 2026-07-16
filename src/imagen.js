@@ -31,7 +31,6 @@ async function generarImagenDalle(prompt) {
       n: 1,
       size: '1792x1024',
       quality: 'standard',
-      response_format: 'url',
     },
     {
       headers: {
@@ -42,7 +41,10 @@ async function generarImagenDalle(prompt) {
     }
   );
 
-  return response.data.data[0].url;
+  const item = response.data.data[0];
+  if (item.url) return item.url;
+  if (item.b64_json) return 'data:image/png;base64,' + item.b64_json;
+  throw new Error('La respuesta de OpenAI no trajo ni url ni b64_json');
 }
 
 async function descargarImagen(url) {
@@ -66,7 +68,13 @@ async function generarYSubirImagen({ tema, marca, slug }) {
     const urlTemporal = await generarImagenDalle(prompt);
 
     console.log('[IMAGEN] Descargando imagen generada...');
-    const buffer = await descargarImagen(urlTemporal);
+    let buffer;
+    if (urlTemporal.startsWith('data:')) {
+      const base64Data = urlTemporal.split(',')[1];
+      buffer = Buffer.from(base64Data, 'base64');
+    } else {
+      buffer = await descargarImagen(urlTemporal);
+    }
 
     // Subir a /images/blog/slug.jpg en Bluehost
     const rutaServidor = `images/blog/${slug}.jpg`;
