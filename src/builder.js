@@ -106,7 +106,7 @@ function buildFooter(depth = 2) {
               <img src="${prefix}images/logo-positivo.svg" alt="Logo Footer" width="330" height="120">
               <p>"En Reparación de Portones.cl, parte de <a class="verde" href="https://magentaelectric.cl/" target="_blank">Magenta Electric</a>, ofrecemos soluciones rápidas y eficientes en Antofagasta, La Serena, Coquimbo, Viña del Mar, Santiago, Concepción y Temuco."</p>
               <ul class="listadofooter">
-                <li>+56930713507</li><li>+56920115900</li><li>+56992987074</li>
+                <li><a href="tel:+56930713507">+56930713507</a></li><li><a href="tel:+56920115900">+56920115900</a></li><li><a href="tel:+56992987074">+56992987074</a></li>
               </ul>
             </div>
             <div class="col-md-6">
@@ -218,7 +218,7 @@ ${relacionadosHtml}
       </div>
 ${buildFooter(depth)}
     </main>
-    <a href="https://api.whatsapp.com/send?phone=56930713507&text=Hola%20necesito%20de%20sus%20servicios" class="whatsapp" title="Whatsapp"></a>
+    <a href="https://api.whatsapp.com/send?phone=56930713507&text=Hola%20Servicio%20T%C3%A9cnico%20de%20Portones%2C%20necesito%20de%20sus%20servicios" class="whatsapp" title="Whatsapp"></a>
     <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
     <script src="${'../'.repeat(depth)}js/bootstrap.js"></script>
   </body>
