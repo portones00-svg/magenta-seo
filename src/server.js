@@ -418,6 +418,7 @@ function verPreview(id, btnEl) {
 
 function consultarItemHastaListo(id, btnEl) {
   fetch('/item/' + id).then(r => r.json()).then(data => {
+    if (itemActualId !== id) return; // el usuario ya abrio otro item, ignorar esta respuesta vieja
     if (!data.ok) {
       document.getElementById('modalContent').innerHTML = '<p class="empty">❌ Error: ' + (data.error || 'desconocido') + '</p>';
       if (btnEl) btnEl.disabled = false;
