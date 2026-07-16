@@ -282,6 +282,7 @@ app.get('/', (req, res) => {
     <img class="preview-img" id="modalImg" src="" onerror="console.error('[IMG] Fallo al cargar:', this.src); this.style.display='none'; document.getElementById('modalImgError').style.display='block'">
     <div id="modalImgError" style="display:none;padding:12px;background:#faece7;color:#993c1d;border-radius:8px;font-size:12px;margin-bottom:12px">⚠️ La imagen no cargó — revisa la consola del navegador para ver el link exacto que falló.</div>
     <div class="preview-content" id="modalContent"></div>
+    <button class="btn btn-secondary" id="btnRegenerarItem" onclick="regenerarItemActual()" style="width:100%;margin-bottom:8px">🔄 Regenerar (texto + imagen)</button>
     <div class="grid2">
       <button class="btn btn-primary" id="btnAprobar" onclick="aprobarItem()">✅ Aprobar — queda en cola</button>
       <button class="btn btn-danger" onclick="descartarItem()">🗑️ Descartar</button>
@@ -378,6 +379,27 @@ function verPreview(id) {
     document.getElementById('modalContent').innerHTML = item.contenido || '<em>Sin contenido</em>';
     document.getElementById('modalPreview').classList.add('open');
   });
+}
+
+async function regenerarItemActual() {
+  if (!itemActualId) return;
+  if (!confirm('¿Regenerar este artículo completo (texto e imagen)? Se reemplaza lo actual.')) return;
+  const btn = document.getElementById('btnRegenerarItem');
+  btn.disabled = true;
+  btn.textContent = '⏳ Regenerando (puede tardar ~30-40 seg)...';
+  try {
+    const res = await fetch('/item/' + itemActualId + '/regenerar', { method: 'POST' }).then(r => r.json());
+    if (res.ok) {
+      verPreview(itemActualId);
+    } else {
+      alert('Error: ' + res.error);
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Regenerar (texto + imagen)';
+  }
 }
 
 async function aprobarItem() {
@@ -491,6 +513,27 @@ app.post('/generar-para-cola', async (req, res) => {
 });
 
 // Ver item de la cola
+// Fuerza regenerar meta, contenido e imagen de un item, sin importar si ya tenia contenido
+app.post('/item/:id/regenerar', async (req, res) => {
+  try {
+    const item = obtenerItemPorId(req.params.id);
+    if (!item) return res.json({ ok: false, error: 'No encontrado' });
+
+    console.log('[REGENERAR] Forzando regeneracion:', item.tema);
+    const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
+    const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
+    const { isoDate, dateStr } = buildDate(0);
+    const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
+    const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
+
+    const itemActualizado = actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen });
+    res.json({ ok: true, item: itemActualizado });
+  } catch(err) {
+    console.error('[REGENERAR] Error:', err.message);
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/item/:id', async (req, res) => {
   let item = obtenerItemPorId(req.params.id);
   if (!item) return res.json({ ok: false, error: 'No encontrado' });
