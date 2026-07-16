@@ -78,7 +78,7 @@ async function generarYSubirImagen({ tema, marca, slug }) {
 
     // Subir a /images/blog/slug.jpg en Bluehost
     const rutaServidor = `images/blog/${slug}.jpg`;
-    await subirArchivo(rutaServidor, buffer.toString('binary'));
+    await subirArchivo(rutaServidor, buffer);
 
     const urlFinal = `${SITE_URL}/${rutaServidor}`;
     console.log('[IMAGEN] Subida OK:', urlFinal);

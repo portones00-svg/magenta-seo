@@ -25,7 +25,8 @@ async function subirArchivo(rutaRelativa, contenido) {
     await client.ensureDir(dir);
 
     const { Readable } = require('stream');
-    const stream = Readable.from([Buffer.from(contenido, 'utf8')]);
+    const bufferFinal = Buffer.isBuffer(contenido) ? contenido : Buffer.from(contenido, 'utf8');
+    const stream = Readable.from([bufferFinal]);
     await client.uploadFrom(stream, filename);
 
     console.log('[FTP] Subido OK:', rutaCompleta);
