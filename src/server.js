@@ -490,9 +490,27 @@ app.post('/generar-para-cola', async (req, res) => {
 });
 
 // Ver item de la cola
-app.get('/item/:id', (req, res) => {
-  const item = obtenerItemPorId(req.params.id);
+app.get('/item/:id', async (req, res) => {
+  let item = obtenerItemPorId(req.params.id);
   if (!item) return res.json({ ok: false, error: 'No encontrado' });
+
+  // Si es un item automatico de Estrategia y aun no tiene contenido, generarlo ahora para poder revisarlo
+  if (item.estado === 'pendiente_auto' && !item.contenido) {
+    try {
+      console.log('[VER-PREVIEW] Generando bajo demanda:', item.tema);
+      const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
+      const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
+      const { isoDate, dateStr } = buildDate(0);
+      const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
+      const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
+
+      item = actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen });
+    } catch(err) {
+      console.error('[VER-PREVIEW] Error generando:', err.message);
+      return res.json({ ok: false, error: 'Error generando el articulo: ' + err.message });
+    }
+  }
+
   res.json({ ok: true, item });
 });
 
@@ -553,16 +571,20 @@ cron.schedule('0 9 * * *', async () => {
   }
 
   for (const item of pendientesAuto) {
-    console.log('[CRON-AUTO] Generando:', item.tema);
     try {
-      const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
-      const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
-      const { isoDate, dateStr } = buildDate(0);
-      const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
-      const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
-
-      actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, estado: 'aprobado' });
-      console.log('[CRON-AUTO] \u2705 Generado y aprobado:', item.tema);
+      if (item.contenido && item.meta) {
+        console.log('[CRON-AUTO] Ya estaba generado (revisado antes con Ver), solo aprobando:', item.tema);
+        actualizarItem(item.id, { estado: 'aprobado' });
+      } else {
+        console.log('[CRON-AUTO] Generando:', item.tema);
+        const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
+        const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
+        const { isoDate, dateStr } = buildDate(0);
+        const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
+        const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
+        actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, estado: 'aprobado' });
+      }
+      console.log('[CRON-AUTO] \u2705 Aprobado, listo para publicar a las 10am:', item.tema);
     } catch(err) {
       console.error('[CRON-AUTO] \u274c Error generando', item.tema, ':', err.message);
       actualizarItem(item.id, { estado: 'error', errorMsg: err.message });
