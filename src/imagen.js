@@ -78,6 +78,9 @@ async function generarYSubirImagen({ tema, marca, slug }) {
 
   } catch (err) {
     console.error('[IMAGEN] Error con DALL-E 3:', err.message);
+    if (err.response && err.response.data) {
+      console.error('[IMAGEN] Detalle del error de OpenAI:', JSON.stringify(err.response.data));
+    }
     console.warn('[IMAGEN] Usando imagen de respaldo...');
     return imagenRespaldo();
   }

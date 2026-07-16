@@ -279,7 +279,8 @@ app.get('/', (req, res) => {
   <div class="modal-box">
     <div class="modal-title" id="modalTitle">Vista previa</div>
     <div id="modalMeta" style="background:#f9f9f9;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8"></div>
-    <img class="preview-img" id="modalImg" src="" onerror="this.style.display='none'">
+    <img class="preview-img" id="modalImg" src="" onerror="console.error('[IMG] Fallo al cargar:', this.src); this.style.display='none'; document.getElementById('modalImgError').style.display='block'">
+    <div id="modalImgError" style="display:none;padding:12px;background:#faece7;color:#993c1d;border-radius:8px;font-size:12px;margin-bottom:12px">⚠️ La imagen no cargó — revisa la consola del navegador para ver el link exacto que falló.</div>
     <div class="preview-content" id="modalContent"></div>
     <div class="grid2">
       <button class="btn btn-primary" id="btnAprobar" onclick="aprobarItem()">✅ Aprobar — queda en cola</button>
