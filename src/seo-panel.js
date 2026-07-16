@@ -569,7 +569,10 @@ function cerrarModalPagKw() {
   document.getElementById('modalPagKw').classList.remove('open');
 }
 
+let sugerenciaActual = null;
+
 async function abrirModalSugerencia(pagina, posicion, ctr) {
+  sugerenciaActual = null;
   document.getElementById('modalSugerenciaBody').innerHTML = '<p class="loading">Leyendo la página en vivo y generando propuesta…</p>';
   document.getElementById('modalSugerencia').classList.add('open');
   try {
@@ -580,6 +583,7 @@ async function abrirModalSugerencia(pagina, posicion, ctr) {
     });
     if (!res.ok) throw new Error(res.error || 'Error generando la propuesta');
     const d = res.data;
+    sugerenciaActual = { pagina, tituloNuevo: d.sugerencia.tituloSugerido, metaNueva: d.sugerencia.metaSugerida };
     document.getElementById('modalSugerenciaBody').innerHTML = \`
       <p style="font-size:12px;color:#999;margin-bottom:12px">\${pagina}</p>
       <div style="background:#faece7;border-radius:8px;padding:12px;margin-bottom:12px">
@@ -593,10 +597,45 @@ async function abrirModalSugerencia(pagina, posicion, ctr) {
         <div style="font-size:13px"><strong>Meta:</strong> \${d.sugerencia.metaSugerida}</div>
       </div>
       <p style="font-size:12px;color:#666;font-style:italic">\${d.sugerencia.razon}</p>
-      <p style="font-size:11px;color:#999;margin-top:12px">Esto es solo una propuesta para tu revisión — nada se aplicó al sitio.</p>
+      <p style="font-size:11px;color:#999;margin-top:12px">Revisa con cuidado antes de aplicar — este cambio se sube directo a tu sitio en vivo.</p>
+      <button class="btn btn-primary" id="btnAplicarSugerencia" style="width:100%;margin-top:8px" onclick="aplicarSugerenciaActual()">✅ Aplicar este cambio a la página</button>
+      <div id="aplicarSugerenciaStatus" class="status-bar"></div>
     \`;
   } catch(e) {
     document.getElementById('modalSugerenciaBody').innerHTML = '<p class="empty">Error: ' + e.message + '</p>';
+  }
+}
+
+async function aplicarSugerenciaActual() {
+  if (!sugerenciaActual) return;
+  const confirmado = confirm('¿Seguro que quieres aplicar este título y meta description a ' + sugerenciaActual.pagina + '? Se va a subir directo a tu sitio en vivo ahora mismo.');
+  if (!confirmado) return;
+
+  const btn = document.getElementById('btnAplicarSugerencia');
+  const statusEl = document.getElementById('aplicarSugerenciaStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Aplicando...';
+
+  try {
+    const res = await fetch('/seo/aplicar-titulo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sugerenciaActual)
+    }).then(r => r.json());
+    if (res.ok) {
+      statusEl.className = 'status-bar status-ok';
+      statusEl.style.display = 'block';
+      statusEl.textContent = '✅ Aplicado. La página ya tiene el título y meta nuevos.';
+      btn.style.display = 'none';
+    } else {
+      throw new Error(res.error || 'Error desconocido');
+    }
+  } catch(e) {
+    statusEl.className = 'status-bar status-error';
+    statusEl.style.display = 'block';
+    statusEl.textContent = '❌ Error: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '✅ Aplicar este cambio a la página';
   }
 }
 
@@ -608,9 +647,7 @@ function cerrarModalSugerencia() {
 let planAutoData = [];
 let arreglosData = [];
 
-async function cargarEstrategia() {
-  window.__estrategiaCargada = true;
-
+async function refrescarPlanGuardadoBox() {
   const existente = await fetchGSC('/seo/estrategia').catch(() => null);
   if (existente && existente.ok && existente.data) {
     const p = existente.data;
@@ -619,8 +656,14 @@ async function cargarEstrategia() {
         <h3>\ud83d\udccc Ya tienes un plan guardado (actualizado \${new Date(p.actualizadoEn).toLocaleDateString('es-CL')})</h3>
         <div style="font-size:12px;color:#666">\${(p.items || []).length} artículos guardados</div>
       </div>\`;
+  } else {
+    document.getElementById('planGuardadoBox').innerHTML = '';
   }
+}
 
+async function cargarEstrategia() {
+  window.__estrategiaCargada = true;
+  await refrescarPlanGuardadoBox();
   await generarPlanAuto();
   await cargarHistorialEstrategias();
 }
@@ -655,6 +698,7 @@ async function eliminarEstrategiaHistorial(id) {
     const res = await fetch('/seo/estrategia/historial/' + id, { method: 'DELETE' }).then(r => r.json());
     if (res.ok) {
       await cargarHistorialEstrategias();
+      await refrescarPlanGuardadoBox();
     } else {
       alert('Error eliminando: ' + (res.error || 'desconocido'));
     }

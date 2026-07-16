@@ -4,7 +4,7 @@ const cron = require('node-cron');
 const { generarArticulo, generarMetadata } = require('./generator');
 const { generarYSubirImagen } = require('./imagen');
 const { buildArticlePage, buildDate } = require('./builder');
-const { publicarArticulo } = require('./publisher');
+const { publicarArticulo, leerArchivo, subirArchivo } = require('./publisher');
 const { actualizarSitemap } = require('./sitemap');
 const { testConexion } = require('./publisher');
 const {
@@ -918,6 +918,33 @@ app.post('/seo/sugerir-titulo', async (req, res) => {
     const resultado = await sugerirMejoraTituloMeta(pagina, posicion, ctr);
     res.json({ ok: true, data: resultado });
   } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// Aplica un titulo/meta nuevo a una pagina real via FTP (requiere aprobacion manual del usuario)
+app.post('/seo/aplicar-titulo', async (req, res) => {
+  try {
+    const { pagina, tituloNuevo, metaNueva } = req.body;
+    if (!pagina || !tituloNuevo || !metaNueva) {
+      return res.json({ ok: false, error: 'Faltan datos (pagina, tituloNuevo, metaNueva)' });
+    }
+
+    const html = await leerArchivo(pagina);
+    if (!html) throw new Error('No se pudo leer el archivo desde el servidor (FTP)');
+
+    let htmlNuevo = html.replace(/<title>[^<]*<\/title>/i, '<title>' + tituloNuevo + '</title>');
+    const regexMeta = /(<meta\s+name=["']description["']\s+content=)["'][^"']*["']/i;
+    if (regexMeta.test(htmlNuevo)) {
+      htmlNuevo = htmlNuevo.replace(regexMeta, '$1"' + metaNueva + '"');
+    } else {
+      throw new Error('No se encontro la meta description en la pagina, no se aplico nada');
+    }
+
+    await subirArchivo(pagina, htmlNuevo);
+    res.json({ ok: true, pagina });
+  } catch (err) {
+    console.error('[APLICAR-TITULO] Error:', err.message);
     res.json({ ok: false, error: err.message });
   }
 });
