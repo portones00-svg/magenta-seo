@@ -431,22 +431,31 @@ function consultarItemHastaListo(id, btnEl) {
       return;
     }
 
-    if (item.generando && !item.contenido) {
-      // Todavia generando, volver a consultar en 3 segundos
+    if (!item.contenido) {
+      // Todavia no hay ni texto, seguir esperando
       setTimeout(() => consultarItemHastaListo(id, btnEl), 3000);
       return;
     }
 
-    // Listo (o ya tenia contenido de antes) - mostrar
-    if (btnEl) btnEl.disabled = false;
+    // Ya hay texto - mostrarlo aunque la imagen no este lista todavia
     document.getElementById('modalTitle').textContent = item.tema;
     document.getElementById('modalMeta').innerHTML =
       '<strong>Title:</strong> ' + (item.meta?.title || '-') + '<br>' +
       '<strong>URL:</strong> ' + (item.canonical || '-') + '<br>' +
       '<strong>Fecha:</strong> ' + item.fechaProgramada + '<br>' +
       '<strong>Estado:</strong> ' + item.estado;
-    document.getElementById('modalImg').src = item.imagen || '';
-    document.getElementById('modalContent').innerHTML = item.contenido || '<em>Sin contenido</em>';
+    document.getElementById('modalContent').innerHTML = item.contenido;
+
+    if (item.imagenLista || item.imagen) {
+      document.getElementById('modalImg').src = item.imagen || '';
+      if (btnEl) btnEl.disabled = false;
+    } else if (item.generando) {
+      document.getElementById('modalImg').src = '';
+      // Seguir consultando solo para la imagen
+      setTimeout(() => consultarItemHastaListo(id, btnEl), 3000);
+    } else {
+      if (btnEl) btnEl.disabled = false;
+    }
   }).catch(err => {
     document.getElementById('modalContent').innerHTML = '<p class="empty">❌ Error de conexión: ' + err.message + '</p>';
     if (btnEl) btnEl.disabled = false;
@@ -672,14 +681,19 @@ app.post('/item/:id/regenerar', async (req, res) => {
 
 async function generarContenidoEnSegundoPlano(item) {
   try {
-    console.log('[VER-PREVIEW-BG] Generando:', item.tema);
+    console.log('[VER-PREVIEW-BG] Generando texto:', item.tema);
     const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
     const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
     const { isoDate, dateStr } = buildDate(0);
     const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
+
+    // Guardar el texto apenas esta listo, para que se pueda mostrar sin esperar la imagen
+    actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagenLista: false });
+    console.log('[VER-PREVIEW-BG] \u2705 Texto listo, generando imagen:', item.tema);
+
     const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
-    actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, generando: false, estado: 'generado' });
-    console.log('[VER-PREVIEW-BG] \u2705 Listo:', item.tema);
+    actualizarItem(item.id, { imagen, imagenLista: true, generando: false, estado: 'generado' });
+    console.log('[VER-PREVIEW-BG] \u2705 Imagen lista:', item.tema);
   } catch(err) {
     console.error('[VER-PREVIEW-BG] Error:', err.message);
     actualizarItem(item.id, { generando: false, errorGeneracion: err.message });
