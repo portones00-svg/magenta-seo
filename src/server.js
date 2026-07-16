@@ -11,7 +11,7 @@ const { testConexion } = require('./publisher');
 const {
   agregarACola, obtenerCola, obtenerItemPorId,
   actualizarItem, eliminarItem, obtenerItemsParaHoy,
-  obtenerCalendarioMes
+  obtenerCalendarioMes, guardarCola
 } = require('./scheduler');
 
 const app = express();
@@ -959,12 +959,14 @@ app.post('/seo/reparar-cola-estrategia', (req, res) => {
   try {
     const cola = obtenerCola();
     let arreglados = 0;
-    cola.forEach(item => {
+    const colaArreglada = cola.map(item => {
       if (item.estado === 'pendiente' && item.hasOwnProperty('enlazarA') && !item.contenido) {
-        actualizarItem(item.id, { estado: 'pendiente_auto' });
         arreglados++;
+        return { ...item, estado: 'pendiente_auto' };
       }
+      return item;
     });
+    guardarCola(colaArreglada);
     res.json({ ok: true, arreglados });
   } catch(err) {
     res.json({ ok: false, error: err.message });

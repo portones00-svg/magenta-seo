@@ -68,5 +68,5 @@ function obtenerCalendarioMes(año, mes) {
 module.exports = {
   agregarACola, obtenerCola, obtenerItemPorId,
   actualizarItem, eliminarItem, obtenerItemsParaHoy,
-  obtenerCalendarioMes
+  obtenerCalendarioMes, guardarCola
 };
