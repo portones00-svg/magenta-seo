@@ -58,4 +58,14 @@ function eliminarDeHistorial(id) {
   }
 }
 
-module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial };
+function limpiarPlan() {
+  try {
+    if (fs.existsSync(PLAN_FILE)) fs.unlinkSync(PLAN_FILE);
+    return true;
+  } catch(e) {
+    console.error('[ESTRATEGIA] Error limpiando plan:', e.message);
+    return false;
+  }
+}
+
+module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial, limpiarPlan };
