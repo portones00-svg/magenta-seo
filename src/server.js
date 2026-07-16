@@ -6,6 +6,14 @@ const { generarYSubirImagen } = require('./imagen');
 const { buildArticlePage, buildDate } = require('./builder');
 const { publicarArticulo, leerArchivo, subirArchivo } = require('./publisher');
 const { registrarAplicado, fueAplicadoRecientemente } = require('./titulos-aplicados');
+
+// Ruta de una sola vez para marcar manualmente una pagina que ya se arreglo antes de que existiera este registro
+app.post('/seo/registrar-aplicado-manual', (req, res) => {
+  const { pagina } = req.body;
+  if (!pagina) return res.json({ ok: false, error: 'Falta pagina' });
+  registrarAplicado(pagina);
+  res.json({ ok: true, pagina });
+});
 const { actualizarSitemap } = require('./sitemap');
 const { testConexion } = require('./publisher');
 const {
