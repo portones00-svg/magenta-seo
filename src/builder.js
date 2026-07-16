@@ -106,7 +106,7 @@ function buildFooter(depth = 2) {
               <img src="${prefix}images/logo-positivo.svg" alt="Logo Footer" width="330" height="120">
               <p>"En Reparación de Portones.cl, parte de <a class="verde" href="https://magentaelectric.cl/" target="_blank">Magenta Electric</a>, ofrecemos soluciones rápidas y eficientes en Antofagasta, La Serena, Coquimbo, Viña del Mar, Santiago, Concepción y Temuco."</p>
               <ul class="listadofooter">
-                <li><a href="tel:+56930713507">+56930713507</a></li><li><a href="tel:+56920115900">+56920115900</a></li><li><a href="tel:+56992987074">+56992987074</a></li>
+                <li>+56930713507</li><li>+56920115900</li><li>+56992987074</li>
               </ul>
             </div>
             <div class="col-md-6">
