@@ -404,18 +404,41 @@ async function generarYAgregarACola() {
 
 function verPreview(id, btnEl) {
   itemActualId = id;
-  const textoOriginal = btnEl ? btnEl.textContent : null;
-  if (btnEl) {
-    btnEl.disabled = true;
-    btnEl.textContent = '⏳ Generando (puede tardar ~30-40 seg)...';
-  }
+  if (btnEl) { btnEl.disabled = true; }
+
+  // Abrir el modal enseguida mostrando estado de carga, sin esperar la respuesta completa
+  document.getElementById('modalTitle').textContent = 'Generando artículo...';
+  document.getElementById('modalMeta').innerHTML = '';
+  document.getElementById('modalImg').src = '';
+  document.getElementById('modalContent').innerHTML = '<p class="loading">⏳ Creando artículo con IA (texto + imagen). Puede tardar 1-2 minutos, esto se actualiza solo, no cierres esta ventana...</p>';
+  document.getElementById('modalPreview').classList.add('open');
+
+  consultarItemHastaListo(id, btnEl);
+}
+
+function consultarItemHastaListo(id, btnEl) {
   fetch('/item/' + id).then(r => r.json()).then(data => {
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = textoOriginal; }
     if (!data.ok) {
-      alert('❌ Error generando el artículo: ' + (data.error || 'desconocido'));
+      document.getElementById('modalContent').innerHTML = '<p class="empty">❌ Error: ' + (data.error || 'desconocido') + '</p>';
+      if (btnEl) btnEl.disabled = false;
       return;
     }
     const item = data.item;
+
+    if (item.errorGeneracion) {
+      document.getElementById('modalContent').innerHTML = '<p class="empty">❌ Error generando: ' + item.errorGeneracion + '</p>';
+      if (btnEl) btnEl.disabled = false;
+      return;
+    }
+
+    if (item.generando && !item.contenido) {
+      // Todavia generando, volver a consultar en 3 segundos
+      setTimeout(() => consultarItemHastaListo(id, btnEl), 3000);
+      return;
+    }
+
+    // Listo (o ya tenia contenido de antes) - mostrar
+    if (btnEl) btnEl.disabled = false;
     document.getElementById('modalTitle').textContent = item.tema;
     document.getElementById('modalMeta').innerHTML =
       '<strong>Title:</strong> ' + (item.meta?.title || '-') + '<br>' +
@@ -424,10 +447,9 @@ function verPreview(id, btnEl) {
       '<strong>Estado:</strong> ' + item.estado;
     document.getElementById('modalImg').src = item.imagen || '';
     document.getElementById('modalContent').innerHTML = item.contenido || '<em>Sin contenido</em>';
-    document.getElementById('modalPreview').classList.add('open');
   }).catch(err => {
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = textoOriginal; }
-    alert('❌ Error de conexión: ' + err.message);
+    document.getElementById('modalContent').innerHTML = '<p class="empty">❌ Error de conexión: ' + err.message + '</p>';
+    if (btnEl) btnEl.disabled = false;
   });
 }
 
@@ -648,25 +670,30 @@ app.post('/item/:id/regenerar', async (req, res) => {
   }
 });
 
+async function generarContenidoEnSegundoPlano(item) {
+  try {
+    console.log('[VER-PREVIEW-BG] Generando:', item.tema);
+    const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
+    const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
+    const { isoDate, dateStr } = buildDate(0);
+    const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
+    const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
+    actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, generando: false });
+    console.log('[VER-PREVIEW-BG] \u2705 Listo:', item.tema);
+  } catch(err) {
+    console.error('[VER-PREVIEW-BG] Error:', err.message);
+    actualizarItem(item.id, { generando: false, errorGeneracion: err.message });
+  }
+}
+
 app.get('/item/:id', async (req, res) => {
   let item = obtenerItemPorId(req.params.id);
   if (!item) return res.json({ ok: false, error: 'No encontrado' });
 
-  // Si es un item automatico de Estrategia y aun no tiene contenido, generarlo ahora para poder revisarlo
-  if (item.estado === 'pendiente_auto' && !item.contenido) {
-    try {
-      console.log('[VER-PREVIEW] Generando bajo demanda:', item.tema);
-      const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
-      const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
-      const { isoDate, dateStr } = buildDate(0);
-      const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
-      const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
-
-      item = actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen });
-    } catch(err) {
-      console.error('[VER-PREVIEW] Error generando:', err.message);
-      return res.json({ ok: false, error: 'Error generando el articulo: ' + err.message });
-    }
+  // Si es un item automatico de Estrategia y aun no tiene contenido ni esta ya generando, lanzarlo en segundo plano
+  if (item.estado === 'pendiente_auto' && !item.contenido && !item.generando) {
+    item = actualizarItem(item.id, { generando: true, errorGeneracion: null });
+    generarContenidoEnSegundoPlano(item); // sin await, corre en segundo plano
   }
 
   res.json({ ok: true, item });
