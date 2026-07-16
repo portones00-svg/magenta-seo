@@ -678,7 +678,7 @@ async function generarContenidoEnSegundoPlano(item) {
     const { isoDate, dateStr } = buildDate(0);
     const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
     const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
-    actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, generando: false });
+    actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, generando: false, estado: 'generado' });
     console.log('[VER-PREVIEW-BG] \u2705 Listo:', item.tema);
   } catch(err) {
     console.error('[VER-PREVIEW-BG] Error:', err.message);
@@ -749,7 +749,7 @@ cron.schedule('0 9 * * *', async () => {
   console.log('[CRON-AUTO] Generando articulos automaticos de Estrategia para hoy...');
   const hoyAuto = new Date().toISOString().split('T')[0];
   const colaAuto = obtenerCola();
-  const pendientesAuto = colaAuto.filter(i => i.fechaProgramada === hoyAuto && i.estado === 'pendiente_auto');
+  const pendientesAuto = colaAuto.filter(i => i.fechaProgramada === hoyAuto && (i.estado === 'pendiente_auto' || i.estado === 'generado'));
 
   if (!pendientesAuto.length) {
     console.log('[CRON-AUTO] Sin articulos automaticos pendientes para hoy');
