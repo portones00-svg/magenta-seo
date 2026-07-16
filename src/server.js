@@ -954,6 +954,23 @@ app.post('/seo/registrar-aplicado-manual', (req, res) => {
   res.json({ ok: true, pagina });
 });
 
+// Ruta de una sola vez: repara items de Estrategia que quedaron mal etiquetados por el bug de id duplicado
+app.post('/seo/reparar-cola-estrategia', (req, res) => {
+  try {
+    const cola = obtenerCola();
+    let arreglados = 0;
+    cola.forEach(item => {
+      if (item.estado === 'pendiente' && item.hasOwnProperty('enlazarA') && !item.contenido) {
+        actualizarItem(item.id, { estado: 'pendiente_auto' });
+        arreglados++;
+      }
+    });
+    res.json({ ok: true, arreglados });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/seo/aplicar-titulo', async (req, res) => {
   try {
     const { pagina, tituloNuevo, metaNueva } = req.body;
@@ -1056,14 +1073,14 @@ app.post('/seo/estrategia', async (req, res) => {
 
     // Empujar cada articulo del plan a la cola como pendiente automatico (sin generar contenido aun)
     items.forEach(item => {
-      const idCola = agregarACola({
+      agregarACola({
         tema: item.tema,
         marca: item.marca || '',
         carpeta: item.carpeta || 'blog',
         fechaProgramada: item.fecha,
         enlazarA: item.enlazarA || null,
+        estado: 'pendiente_auto',
       });
-      actualizarItem(idCola, { estado: 'pendiente_auto' });
     });
 
     res.json({ ok: true, data });

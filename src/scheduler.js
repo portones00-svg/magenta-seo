@@ -24,8 +24,8 @@ function guardarCola(cola) {
 
 function agregarACola(item) {
   const cola = cargarCola();
-  const id = Date.now().toString();
-  cola.push({ id, ...item, estado: 'pendiente', creadoEn: new Date().toISOString() });
+  const id = Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8);
+  cola.push({ id, ...item, estado: item.estado || 'pendiente', creadoEn: new Date().toISOString() });
   guardarCola(cola);
   return id;
 }
