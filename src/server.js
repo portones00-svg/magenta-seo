@@ -279,7 +279,7 @@ app.get('/', (req, res) => {
   <div class="modal-box">
     <div class="modal-title" id="modalTitle">Vista previa</div>
     <div id="modalMeta" style="background:#f9f9f9;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8"></div>
-    <img class="preview-img" id="modalImg" src="" onerror="console.error('[IMG] Fallo al cargar:', this.src); this.style.display='none'; document.getElementById('modalImgError').style.display='block'">
+    <img class="preview-img" id="modalImg" onerror="if(this.src) { console.error('[IMG] Fallo al cargar:', this.src); this.style.display='none'; document.getElementById('modalImgError').style.display='block'; }">
     <div id="modalImgError" style="display:none;padding:12px;background:#faece7;color:#993c1d;border-radius:8px;font-size:12px;margin-bottom:12px">⚠️ La imagen no cargó — revisa la consola del navegador para ver el link exacto que falló.</div>
     <div class="preview-content" id="modalContent"></div>
     <div class="grid2" style="margin-bottom:8px">
@@ -409,7 +409,7 @@ function verPreview(id, btnEl) {
   // Abrir el modal enseguida mostrando estado de carga, sin esperar la respuesta completa
   document.getElementById('modalTitle').textContent = 'Generando artículo...';
   document.getElementById('modalMeta').innerHTML = '';
-  document.getElementById('modalImg').src = '';
+  document.getElementById('modalImg').removeAttribute('src');
   document.getElementById('modalContent').innerHTML = '<p class="loading">⏳ Creando artículo con IA (texto + imagen). Puede tardar 1-2 minutos, esto se actualiza solo, no cierres esta ventana...</p>';
   document.getElementById('modalPreview').classList.add('open');
 
@@ -448,10 +448,14 @@ function consultarItemHastaListo(id, btnEl) {
     document.getElementById('modalContent').innerHTML = item.contenido;
 
     if (item.imagenLista || item.imagen) {
-      document.getElementById('modalImg').src = item.imagen ? (item.imagen + (item.imagen.includes('?') ? '&' : '?') + 't=' + Date.now()) : '';
+      if (item.imagen) {
+        document.getElementById('modalImg').src = item.imagen + (item.imagen.includes('?') ? '&' : '?') + 't=' + Date.now();
+      } else {
+        document.getElementById('modalImg').removeAttribute('src');
+      }
       if (btnEl) btnEl.disabled = false;
     } else if (item.generando) {
-      document.getElementById('modalImg').src = '';
+      document.getElementById('modalImg').removeAttribute('src');
       // Seguir consultando solo para la imagen
       setTimeout(() => consultarItemHastaListo(id, btnEl), 3000);
     } else {
