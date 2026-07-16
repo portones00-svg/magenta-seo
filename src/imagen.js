@@ -26,24 +26,24 @@ async function generarImagenDalle(prompt) {
   const response = await axios.post(
     'https://api.openai.com/v1/images/generations',
     {
-      model: 'dall-e-3',
+      model: 'gpt-image-1',
       prompt,
       n: 1,
-      size: '1792x1024',
-      quality: 'standard',
+      size: '1536x1024',
+      quality: 'medium',
     },
     {
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      timeout: 60000,
+      timeout: 90000,
     }
   );
 
   const item = response.data.data[0];
-  if (item.url) return item.url;
   if (item.b64_json) return 'data:image/png;base64,' + item.b64_json;
+  if (item.url) return item.url;
   throw new Error('La respuesta de OpenAI no trajo ni url ni b64_json');
 }
 
