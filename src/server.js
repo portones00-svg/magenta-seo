@@ -1159,6 +1159,29 @@ app.post('/seo/registrar-aplicado-manual', (req, res) => {
 });
 
 // Ruta de una sola vez: repara items de Estrategia que quedaron mal etiquetados por el bug de id duplicado
+// Ruta de una sola vez: reasigna un id unico de verdad a cada item de la cola (arregla colisiones viejas)
+app.post('/seo/reparar-ids-duplicados', (req, res) => {
+  try {
+    const cola = obtenerCola();
+    let cambiados = 0;
+    const idsUsados = new Set();
+    const colaArreglada = cola.map((item, idx) => {
+      if (idsUsados.has(item.id)) {
+        const nuevoId = Date.now().toString() + '-' + idx + '-' + Math.random().toString(36).slice(2, 8);
+        idsUsados.add(nuevoId);
+        cambiados++;
+        return { ...item, id: nuevoId };
+      }
+      idsUsados.add(item.id);
+      return item;
+    });
+    guardarCola(colaArreglada);
+    res.json({ ok: true, cambiados, total: cola.length });
+  } catch(err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/seo/reparar-cola-estrategia', (req, res) => {
   try {
     const cola = obtenerCola();
