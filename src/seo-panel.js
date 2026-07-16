@@ -289,7 +289,7 @@ function renderSeoPanel() {
   </div>
 </div>
 
-<div class="modal" id="modalConfirmar">
+<div class="modal" id="modalConfirmar" style="z-index:200">
   <div class="modal-box" style="max-width:420px;text-align:center">
     <div style="font-size:32px;margin-bottom:12px">⚠️</div>
     <div class="modal-title" style="text-align:center" id="modalConfirmarTitulo">Confirmar acción</div>
