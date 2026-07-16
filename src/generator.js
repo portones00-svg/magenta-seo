@@ -26,7 +26,7 @@ const KEYWORDS_PRIORITARIAS = {
   ]
 };
 
-async function generarArticulo({ tema, marca, slug, tipo = 'articulo' }) {
+async function generarArticulo({ tema, marca, slug, tipo = 'articulo', enlazarA = null }) {
   const systemPrompt = `Eres un redactor SEO experto en portones automáticos y sistemas de automatización para Chile.
 
 REGLAS ESTRICTAS:
@@ -41,13 +41,17 @@ REGLAS ESTRICTAS:
 - HECHOS DEL NEGOCIO QUE DEBES RESPETAR SIEMPRE: ${HECHOS_NEGOCIO}
 - Devuelve SOLO el HTML del contenido (párrafos y h2), sin head, body ni estructura de página`;
 
+  const instruccionEnlace = enlazarA
+    ? `\n\nIMPORTANTE: en algun punto natural y relevante del texto, incluye un enlace interno hacia "${enlazarA}" usando HTML <a href="${enlazarA}">texto ancla descriptivo</a>. El texto ancla debe ser descriptivo (nunca "click aqui" ni "ver mas"), y el enlace debe sentirse organico dentro del parrafo, no forzado.`
+    : '';
+
   const userPrompt = tipo === 'articulo'
     ? `Escribe un artículo completo sobre: "${tema}"
        ${marca ? `Marca: ${marca.toUpperCase()}` : ''}
        ${slug ? `Slug destino: /${slug}/` : ''}
        
        El artículo debe posicionar bien en Google para la keyword principal y keywords relacionadas.
-       Incluye información técnica real y práctica que ayude al lector.`
+       Incluye información técnica real y práctica que ayude al lector.${instruccionEnlace}`
     : `Escribe contenido expandido (~1100 palabras) para la página de marca "${marca.toUpperCase()}" 
        de reparaciondeportones.cl.
        

@@ -541,6 +541,34 @@ app.get('/test-sftp', async (req, res) => {
 app.get('/health', (req, res) => res.json({ ok: true, uptime: process.uptime(), cola: obtenerCola().length }));
 
 // ─── CRON: publicar artículo del día a las 7am Chile (10am UTC) ───────────────
+cron.schedule('0 9 * * *', async () => {
+  console.log('[CRON-AUTO] Generando articulos automaticos de Estrategia para hoy...');
+  const hoyAuto = new Date().toISOString().split('T')[0];
+  const colaAuto = obtenerCola();
+  const pendientesAuto = colaAuto.filter(i => i.fechaProgramada === hoyAuto && i.estado === 'pendiente_auto');
+
+  if (!pendientesAuto.length) {
+    console.log('[CRON-AUTO] Sin articulos automaticos pendientes para hoy');
+  }
+
+  for (const item of pendientesAuto) {
+    console.log('[CRON-AUTO] Generando:', item.tema);
+    try {
+      const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
+      const contenido = await generarArticulo({ tema: item.tema, marca: item.marca, slug: meta.slug, enlazarA: item.enlazarA });
+      const { isoDate, dateStr } = buildDate(0);
+      const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
+      const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
+
+      actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, estado: 'aprobado' });
+      console.log('[CRON-AUTO] \u2705 Generado y aprobado:', item.tema);
+    } catch(err) {
+      console.error('[CRON-AUTO] \u274c Error generando', item.tema, ':', err.message);
+      actualizarItem(item.id, { estado: 'error', errorMsg: err.message });
+    }
+  }
+});
+
 cron.schedule('0 10 * * *', async () => {
   console.log('[CRON] Revisando artículos para hoy...');
   const items = obtenerItemsParaHoy();
@@ -964,6 +992,18 @@ app.post('/seo/estrategia', async (req, res) => {
       proyeccion60: Math.round(totalClicsBase * 0.20),
       proyeccion90: Math.round(totalClicsBase * 0.35),
       paginasBase,
+    });
+
+    // Empujar cada articulo del plan a la cola como pendiente automatico (sin generar contenido aun)
+    items.forEach(item => {
+      const idCola = agregarACola({
+        tema: item.tema,
+        marca: item.marca || '',
+        carpeta: item.carpeta || 'blog',
+        fechaProgramada: item.fecha,
+        enlazarA: item.enlazarA || null,
+      });
+      actualizarItem(idCola, { estado: 'pendiente_auto' });
     });
 
     res.json({ ok: true, data });
