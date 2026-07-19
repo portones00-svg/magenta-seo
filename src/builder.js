@@ -3,7 +3,6 @@ const he = require('he');
 const SITE_URL = process.env.SITE_URL || 'https://www.reparaciondeportones.cl';
 const GTM_ID = 'GTM-N3SDL8C';
 const FB_PIXEL = '422112350987438';
-const UA_ID = 'UA-113418977-1';
 const SORO_IMGS = 'https://afocirmbqdxnkyescnev.supabase.co/storage/v1/object/public/featured-images/1eb1b567-55bf-4b0c-8be4-c0d4eaffbb66/';
 
 // Pool de imágenes disponibles (rotación automática)
@@ -33,13 +32,6 @@ function nextImage() {
 }
 
 const TRACKING = `
-    <script async src="https://www.googletagmanager.com/gtag/js?id=${UA_ID}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '${UA_ID}');
-    </script>
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
