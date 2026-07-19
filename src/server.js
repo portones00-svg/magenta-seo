@@ -733,6 +733,13 @@ app.delete('/descartar/:id', (req, res) => {
 });
 
 // Ver items de un día
+// Ruta temporal de una sola vez: lista todos los items publicados con sus datos completos
+app.get('/temp-listar-publicados', (req, res) => {
+  const cola = obtenerCola();
+  const publicados = cola.filter(item => item.estado === 'publicado' && item.canonical);
+  res.json({ ok: true, total: publicados.length, publicados });
+});
+
 app.get('/dia/:fecha', (req, res) => {
   const cola = obtenerCola();
   const item = cola.find(i => i.fechaProgramada === req.params.fecha);
