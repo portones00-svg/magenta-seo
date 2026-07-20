@@ -87,4 +87,58 @@ async function testConexion() {
   }
 }
 
-module.exports = { subirArchivo, leerArchivo, publicarArticulo, testConexion };
+// Agrega un articulo recien publicado a la lista de blog/index.html, en el lugar correcto
+async function agregarABlogIndex(item) {
+  try {
+    let html = await leerArchivo('blog/index.html');
+    if (!html) {
+      console.error('[BLOG-INDEX] No se pudo leer blog/index.html, no se agrego la tarjeta');
+      return false;
+    }
+
+    const url = new URL(item.canonical);
+    const rutaRelativa = url.pathname; // ej: /blog/mi-slug/
+    const hrefEnListado = '..' + rutaRelativa;
+
+    // Evitar duplicados si ya esta agregado
+    if (html.includes(hrefEnListado)) {
+      console.log('[BLOG-INDEX] Ya estaba en la lista, no se duplica:', hrefEnListado);
+      return true;
+    }
+
+    const fecha = new Date(item.publicadoEn || new Date());
+    const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    // Usar metodos UTC para evitar que la zona horaria local corra la fecha un dia
+    const fechaFormateada = fecha.getUTCDate() + ' de ' + meses[fecha.getUTCMonth()] + ' de ' + fecha.getUTCFullYear();
+    const titulo = item.meta.h1 || item.meta.title;
+    const descripcion = item.meta.description || '';
+
+    const tarjetaHtml = `          <a href="${hrefEnListado}" class="lista-blog-card" itemscope itemtype="https://schema.org/BlogPosting">
+            <img class="lista-blog-card-img" src="${item.imagen}" alt="${titulo}" loading="lazy" itemprop="image">
+            <div class="lista-blog-card-content">
+              <h2 class="lista-blog-card-title" itemprop="headline">${titulo}</h2>
+              <p class="lista-blog-card-excerpt" itemprop="description">${descripcion}</p>
+              <time class="lista-blog-card-date" datetime="${fecha.toISOString()}" itemprop="datePublished">${fechaFormateada}</time>
+            </div>
+          </a>
+`;
+
+    // Insertar justo antes de la primera tarjeta REAL existente (por su clase especifica, no cualquier <a href>)
+    const primeraTarjeta = html.indexOf('class="lista-blog-card"');
+    if (primeraTarjeta === -1) {
+      console.error('[BLOG-INDEX] No se encontro ninguna tarjeta existente, no se agrego (para no dejar el HTML roto)');
+      return false;
+    }
+    const inicioTagA = html.lastIndexOf('<a href="', primeraTarjeta);
+
+    const nuevoHtml = html.substring(0, inicioTagA) + tarjetaHtml + html.substring(inicioTagA);
+    await subirArchivo('blog/index.html', nuevoHtml);
+    console.log('[BLOG-INDEX] ✅ Agregado:', hrefEnListado);
+    return true;
+  } catch (err) {
+    console.error('[BLOG-INDEX] Error:', err.message);
+    return false;
+  }
+}
+
+module.exports = { subirArchivo, leerArchivo, publicarArticulo, testConexion, agregarABlogIndex };

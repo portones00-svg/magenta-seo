@@ -4,7 +4,7 @@ const cron = require('node-cron');
 const { generarArticulo, generarMetadata } = require('./generator');
 const { generarYSubirImagen } = require('./imagen');
 const { buildArticlePage, buildDate } = require('./builder');
-const { publicarArticulo, leerArchivo, subirArchivo } = require('./publisher');
+const { publicarArticulo, leerArchivo, subirArchivo, agregarABlogIndex } = require('./publisher');
 const { registrarAplicado, fueAplicadoRecientemente } = require('./titulos-aplicados');
 const { actualizarSitemap } = require('./sitemap');
 const { testConexion } = require('./publisher');
@@ -650,7 +650,8 @@ app.post('/item/:id/publicar-ahora', async (req, res) => {
 
     await publicarArticulo({ slug: item.meta.slug, carpeta: item.carpeta, htmlContent: htmlCompleto });
     await actualizarSitemap({ canonical: item.canonical });
-    actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+    const itemPublicado = actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+    await agregarABlogIndex(itemPublicado);
 
     historial.push({
       fecha: new Date().toLocaleString('es-CL'),
@@ -825,7 +826,8 @@ cron.schedule('0 10 * * *', async () => {
 
       await publicarArticulo({ slug: item.meta.slug, carpeta: item.carpeta, htmlContent: htmlCompleto });
       await actualizarSitemap({ canonical: item.canonical });
-      actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+      const itemPublicadoManual = actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+      await agregarABlogIndex(itemPublicadoManual);
 
       historial.push({
         fecha: new Date().toLocaleString('es-CL'),
