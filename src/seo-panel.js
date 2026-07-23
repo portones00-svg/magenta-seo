@@ -18,6 +18,14 @@ function renderSidebar(active) {
     <div style="padding:14px 20px 0">
       <a href="/terminos-datos" target="_blank" style="font-size:11px;color:#999">Términos y condiciones de datos</a>
     </div>
+    <div style="margin-top:auto;padding:20px">
+      <a href="/logout" title="Cerrar sesión" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f45c5c,#e02424);text-decoration:none;box-shadow:0 2px 6px rgba(224,36,36,0.35)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+          <line x1="12" y1="2" x2="12" y2="12"></line>
+        </svg>
+      </a>
+    </div>
   </div>`;
 }
 
@@ -34,7 +42,7 @@ function renderSeoPanel() {
     body{font-family:"Poppins",sans-serif;background:#f5f5f5;color:#1a1a1a}
     a{color:#216416}
     .layout{display:flex;min-height:100vh}
-    .sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e5;padding:20px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+    .sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e5;padding:20px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
     .sidebar h1{font-size:16px;font-weight:600;color:#216416;padding:0 20px 20px}
     .nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent}
     .nav-item:hover{background:#f5f5f5}
