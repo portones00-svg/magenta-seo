@@ -1210,8 +1210,15 @@ app.post('/seo/aplicar-titulo', async (req, res) => {
       return res.json({ ok: false, error: 'Faltan datos (pagina, tituloNuevo, metaNueva)' });
     }
 
-    const html = await leerArchivo(pagina);
-    if (!html) throw new Error('No se pudo leer el archivo desde el servidor (FTP)');
+    // Algunas URLs que reporta Search Console no incluyen .html (por reescritura de URL del hosting),
+    // pero el archivo real en el servidor si lo tiene. Intentamos ambas rutas.
+    let rutaReal = pagina;
+    let html = await leerArchivo(rutaReal);
+    if (!html && !pagina.endsWith('.html') && !pagina.endsWith('/')) {
+      rutaReal = pagina + '.html';
+      html = await leerArchivo(rutaReal);
+    }
+    if (!html) throw new Error('No se pudo leer el archivo desde el servidor (FTP), ni como "' + pagina + '" ni como "' + pagina + '.html"');
 
     let htmlNuevo = html.replace(/<title>[^<]*<\/title>/i, '<title>' + tituloNuevo + '</title>');
     const regexMeta = /(<meta\s+name=["']description["']\s+content=)["'][^"']*["']/i;
@@ -1221,9 +1228,9 @@ app.post('/seo/aplicar-titulo', async (req, res) => {
       throw new Error('No se encontro la meta description en la pagina, no se aplico nada');
     }
 
-    await subirArchivo(pagina, htmlNuevo);
+    await subirArchivo(rutaReal, htmlNuevo);
     registrarAplicado(pagina);
-    res.json({ ok: true, pagina });
+    res.json({ ok: true, pagina: rutaReal });
   } catch (err) {
     console.error('[APLICAR-TITULO] Error:', err.message);
     res.json({ ok: false, error: err.message });
