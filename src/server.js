@@ -29,8 +29,12 @@ app.use(session({
 }));
 
 // Rutas publicas que NO requieren estar logueado
-const RUTAS_PUBLICAS = ['/login', '/auth/google', '/auth/callback', '/health'];
+const RUTAS_PUBLICAS = ['/login', '/auth/google', '/auth/callback', '/health', '/agente-seo'];
 app.use(requireAuth(RUTAS_PUBLICAS));
+
+app.get('/agente-seo', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'landing.html'));
+});
 
 app.get('/login', (req, res) => {
   res.send(renderLoginPage(req.query.error));
