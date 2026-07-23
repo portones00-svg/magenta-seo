@@ -14,9 +14,33 @@ const {
   obtenerCalendarioMes, guardarCola
 } = require('./scheduler');
 
+const session = require('express-session');
+const { renderLoginPage, requireAuth } = require('./panel-auth');
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'cambia-esto-en-produccion',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 } // 30 dias
+}));
+
+// Rutas publicas que NO requieren estar logueado
+const RUTAS_PUBLICAS = ['/login', '/auth/google', '/auth/callback', '/health'];
+app.use(requireAuth(RUTAS_PUBLICAS));
+
+app.get('/login', (req, res) => {
+  res.send(renderLoginPage(req.query.error));
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
 
 const SITE_URL = process.env.SITE_URL || 'https://www.reparaciondeportones.cl';
 const historial = [];
@@ -847,7 +871,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('[SERVER] Puerto', PORT));
 
 // ─── RUTAS SEO / SEARCH CONSOLE ──────────────────────────────────────────────
-const { getAuthUrl, getTokensFromCode, loadTokens } = require('./gsc-auth');
+const { getAuthUrl, getTokensFromCode, loadTokens, verificarIdentidad } = require('./gsc-auth');
 const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina } = require('./gsc-diagnostico');
 const AnthropicSDK = require('@anthropic-ai/sdk');
 const anthropicClient = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -865,12 +889,23 @@ app.get('/auth/callback', async (req, res) => {
   const { code } = req.query;
   if (!code) return res.send('Error: sin código de autorización');
   try {
-    await getTokensFromCode(code);
-    res.send(`
-      <h2>✅ ¡Conectado con Google Search Console!</h2>
-      <p>Ya puedes ver el diagnóstico SEO.</p>
-      <a href="/seo">Ver diagnóstico SEO →</a>
-    `);
+    const tokens = await getTokensFromCode(code);
+
+    // Verificar identidad con el id_token que vino en la misma respuesta
+    if (tokens.id_token) {
+      const identidad = await verificarIdentidad(tokens.id_token);
+      const emailPermitido = process.env.ADMIN_EMAIL;
+
+      if (emailPermitido && identidad.email !== emailPermitido) {
+        return res.redirect('/login?error=' + encodeURIComponent('Esta cuenta no tiene acceso a este panel.'));
+      }
+
+      req.session.autenticado = true;
+      req.session.email = identidad.email;
+      req.session.nombre = identidad.nombre;
+    }
+
+    res.redirect('/seo');
   } catch(err) {
     res.send('❌ Error: ' + err.message);
   }

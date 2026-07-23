@@ -15,7 +15,12 @@ function getAuthUrl() {
   const oauth2Client = getOAuthClient();
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/webmasters.readonly'],
+    scope: [
+      'https://www.googleapis.com/auth/webmasters.readonly',
+      'openid',
+      'email',
+      'profile'
+    ],
     prompt: 'consent'
   });
 }
@@ -25,6 +30,17 @@ async function getTokensFromCode(code) {
   const { tokens } = await oauth2Client.getToken(code);
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens));
   return tokens;
+}
+
+// Verifica el id_token de Google y devuelve el email del usuario que inicio sesion
+async function verificarIdentidad(idToken) {
+  const oauth2Client = getOAuthClient();
+  const ticket = await oauth2Client.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID
+  });
+  const payload = ticket.getPayload();
+  return { email: payload.email, nombre: payload.name, foto: payload.picture };
 }
 
 function loadTokens() {
@@ -50,4 +66,4 @@ async function getAuthenticatedClient() {
   return oauth2Client;
 }
 
-module.exports = { getAuthUrl, getTokensFromCode, getAuthenticatedClient, loadTokens };
+module.exports = { getAuthUrl, getTokensFromCode, getAuthenticatedClient, loadTokens, verificarIdentidad };
