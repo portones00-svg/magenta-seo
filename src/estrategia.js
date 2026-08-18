@@ -38,6 +38,19 @@ function guardarEnHistorial(entrada) {
   try {
     const historial = cargarHistorial();
     historial.push(entrada);
+
+    // Solo conservar el detalle completo (snapshotCompleto) en los ultimos 2 ciclos.
+    // Los mas viejos se quedan solo con el resumen liviano (paginasBase, etc), nunca se eliminan.
+    const conSnapshot = historial.filter(h => h.snapshotCompleto);
+    if (conSnapshot.length > 2) {
+      const idsAConservar = new Set(conSnapshot.slice(-2).map(h => h.id));
+      historial.forEach(h => {
+        if (h.snapshotCompleto && !idsAConservar.has(h.id)) {
+          delete h.snapshotCompleto;
+        }
+      });
+    }
+
     fs.writeFileSync(HISTORIAL_FILE, JSON.stringify(historial, null, 2));
     return entrada;
   } catch(e) {

@@ -1338,6 +1338,10 @@ app.post('/seo/estrategia', async (req, res) => {
     const diagActual = await getDiagnostico(28);
     const totalClicsBase = diagActual.resumen.totalClics;
 
+    // Snapshot completo del sitio (todas las paginas + todas las keywords) para poder
+    // comparar el ciclo completo contra hoy, no solo las paginas que este plan toco
+    const todasKeywords = await getTodasLasKeywords(28);
+
     guardarEnHistorial({
       id: historialId,
       fechaGuardado: new Date().toISOString(),
@@ -1347,6 +1351,10 @@ app.post('/seo/estrategia', async (req, res) => {
       proyeccion60: Math.round(totalClicsBase * 0.20),
       proyeccion90: Math.round(totalClicsBase * 0.35),
       paginasBase,
+      snapshotCompleto: {
+        paginas: todasPaginas,
+        keywords: todasKeywords,
+      },
     });
 
     // Empujar cada articulo del plan a la cola como pendiente automatico (sin generar contenido aun)
