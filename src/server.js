@@ -90,6 +90,7 @@ function renderCalendario(año, mes) {
   const diasEnMes = new Date(año, mes, 0).getDate();
   const primerDia = new Date(año, mes - 1, 1).getDay();
   const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const verTodo = req.query.verTodo === '1';
   const hoy = new Date().toISOString().split('T')[0];
 
   let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px">`;
@@ -288,7 +289,7 @@ app.get('/', (req, res) => {
   <!-- COLA DE ARTÍCULOS -->
   <div class="card" id="cola">
     <div class="card-title">📋 Cola de publicaciones</div>
-    <div id="colaContainer">${renderCola()}</div>
+    <div id="colaContainer">${renderCola(año, mes, verTodo)}${verTodo ? '<p style="font-size:12px;margin-top:8px"><a href="?año='+año+'&mes='+mes+'" style="color:#216416">← Ver solo este mes</a></p>' : ''}</div>
   </div>
 
   <!-- HISTORIAL -->
@@ -605,9 +606,17 @@ function showStatus(id, type, msg) {
 });
 
 // Helper para renderizar la cola
-function renderCola() {
-  const cola = obtenerCola().sort((a,b) => (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
-  if (!cola.length) return '<p style="font-size:13px;color:#999">La cola está vacía. Genera artículos arriba para llenarla.</p>';
+function renderCola(año, mes, verTodo) {
+  const prefijoMes = año && mes ? `${año}-${String(mes).padStart(2,'0')}` : null;
+  let cola = obtenerCola().sort((a,b) => (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
+  if (prefijoMes && !verTodo) {
+    cola = cola.filter(i => (i.fechaProgramada || '').startsWith(prefijoMes));
+  }
+  if (!cola.length) {
+    return verTodo
+      ? '<p style="font-size:13px;color:#999">La cola está vacía. Genera artículos arriba para llenarla.</p>'
+      : '<p style="font-size:13px;color:#999">No hay artículos programados este mes. <a href="?año=' + año + '&mes=' + mes + '&verTodo=1" style="color:#216416">Ver historial completo</a></p>';
+  }
 
   return `<table>
     <thead><tr><th>Fecha</th><th>Tema</th><th>Estado</th><th>Acciones</th></tr></thead>
