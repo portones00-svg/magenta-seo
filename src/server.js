@@ -1164,7 +1164,7 @@ async function generarPlanAutomatico(prioridades = []) {
     // Override manual: temas de industria/mineria deben enlazar siempre a la pagina
     // comercial dedicada, aunque esa pagina no tenga datos de Search Console todavia
     // (por eso no aparece en "comerciales", que solo incluye paginas con impresiones reales)
-    if (/\bindustrial(es)?\b|\bminer(i|í)a\b|\bminero(s)?\b/.test(temaNorm)) {
+    if (/\bindustrial(es)?\b|\bminer(i|í)a\b|\bminero(s)?\b|\bempresa(s)?\b/.test(temaNorm)) {
       const paginaIndustrial = paginas.find(p => p.pagina === '/portones-industriales.html');
       mejor = paginaIndustrial
         ? { pagina: paginaIndustrial.pagina, potencial: Math.max(0, Math.round(paginaIndustrial.impresiones * (0.28 - paginaIndustrial.ctr / 100))) }
