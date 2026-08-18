@@ -1067,13 +1067,14 @@ function normalizarTexto(s) {
     .trim();
 }
 
-async function extraerPrioridades(textoLibre) {
+async function extraerPrioridades(textoLibre, comunasConPagina) {
   if (!textoLibre || !textoLibre.trim()) return [];
   try {
+    const comunasTexto = (comunasConPagina && comunasConPagina.length > 0) ? JSON.stringify(comunasConPagina) : '[]';
     const msg = await anthropicClient.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 800,
-      system: 'Analizas un texto en español (con posibles errores de tipeo) escrito por el dueño de una empresa chilena de reparación e instalación de portones eléctricos, donde describe qué contenido quiere priorizar este mes. Extrae una lista de TEMAS DE ARTÍCULO completos y listos para usar - no solo nombres de lugares. Reglas: (1) Si menciona una comuna o ciudad sin más detalle, genera el tema "reparación portón eléctrico [Comuna]" con la ortografía corregida (ej "lo barnechea" -> "Lo Barnechea"). (2) Si menciona un pedido más específico y completo (por ejemplo un servicio, una industria, una capacidad técnica real del negocio como un inspector certificado, un tipo de ensayo, portones industriales, portones para minería, etc), escribe el tema capturando ese detalle real tal como el usuario lo describió - NO lo descartes ni lo conviertas en genérico, y NO inventes datos que el usuario no dio. (3) Si pide varios artículos de un mismo tema (ej "3 artículos de portones industriales"), genera esa cantidad de temas relacionados pero con ángulos distintos. Ignora solo relleno conversacional sin contenido real (ej "quiero que", "además"). Responde SOLO con un array JSON de strings, cada uno un tema de artículo completo, sin markdown ni explicación. Si no detectas ningún pedido real, responde [].',
+      system: 'Analizas un texto en español (con posibles errores de tipeo) escrito por el dueño de una empresa chilena de reparación e instalación de portones eléctricos, donde describe qué contenido quiere priorizar este mes. Extrae una lista de TEMAS DE ARTÍCULO completos y listos para usar - no solo nombres de lugares. Reglas: (1) Si menciona una comuna o ciudad SIN pagina comercial propia todavia, genera el tema "reparación portón eléctrico [Comuna]" con la ortografía corregida (ej "lo barnechea" -> "Lo Barnechea"). (2) Si menciona una comuna que SI aparece en esta lista de comunas que YA tienen pagina comercial propia (' + comunasTexto + '), el articulo nuevo NO debe repetir esa misma frase generica (competiria por la misma keyword que su propia pagina) - dale un angulo de blog distinto y especifico que enlace de vuelta a esa pagina como refuerzo, por ejemplo un problema comun, una guia rapida, o un caso de uso puntual para esa comuna. (3) Si menciona un pedido mas especifico y completo (un servicio, una industria, una capacidad tecnica real del negocio como un inspector certificado, un tipo de ensayo, portones industriales, portones para mineria, etc), escribe el tema capturando ese detalle real tal como el usuario lo describio - NO lo descartes ni lo conviertas en generico, y NO inventes datos que el usuario no dio. (4) Si pide varios articulos de un mismo tema (ej "3 articulos de portones industriales"), genera esa cantidad de temas relacionados pero con angulos distintos. Ignora solo relleno conversacional sin contenido real (ej "quiero que", "ademas"). Responde SOLO con un array JSON de strings, cada uno un tema de articulo completo, sin markdown ni explicacion. Si no detectas ningun pedido real, responde [].',
       messages: [{ role: 'user', content: textoLibre }]
     });
     const texto = msg.content[0].text.trim();
@@ -1342,7 +1343,13 @@ app.post('/seo/plan-automatico', async (req, res) => {
   try {
     const textoLibre = typeof req.body.texto === 'string' ? req.body.texto : '';
     const prioridadesManual = Array.isArray(req.body.prioridades) ? req.body.prioridades : [];
-    const prioridadesExtraidas = textoLibre ? await extraerPrioridades(textoLibre) : [];
+
+    const paginasActuales = await getTodasLasPaginas(90);
+    const comunasConPaginaTexto = paginasActuales
+      .filter(p => /^\/?(a-domicilio-en-|en-)/.test(p.pagina))
+      .map(p => p.pagina.replace(/^\//, '').replace(/\.html$/, '').replace(/^a-domicilio-en-|^en-/, ''));
+
+    const prioridadesExtraidas = textoLibre ? await extraerPrioridades(textoLibre, comunasConPaginaTexto) : [];
     const prioridadesEscritas = prioridadesExtraidas.length > 0 ? prioridadesExtraidas : prioridadesManual;
 
     // Prioridad automatica: paginas en posicion 4-6 que hay que empujar a posicion 1,
