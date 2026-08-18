@@ -1277,14 +1277,43 @@ app.post('/seo/aplicar-titulo', async (req, res) => {
 });
 
 // Genera el plan del mes automaticamente (con prioridades opcionales del usuario)
+// Extrae un nombre legible de la ruta de una pagina, ej "a-domicilio-en-la-florida.html" -> "La Florida"
+function nombreLegibleDePagina(pagina) {
+  let slug = pagina.replace(/^\//, '').replace(/\.html$/, '');
+  slug = slug.replace(/^a-domicilio-en-/, '').replace(/^en-/, '');
+  return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// Paginas que ya mejoraron y quedaron cerca (posicion 4-6) - empujarlas a posicion 1
+// es mas rentable que atacar temas nuevos desde cero
+async function generarPrioridadesAutomaticas() {
+  const paginas = await getTodasLasPaginas(28);
+  const cercaDelTop = paginas
+    .filter(p => p.posicion >= 4 && p.posicion <= 6 && clasificarIntencionServer(p.pagina) === 'comercial')
+    .map(p => {
+      const ctrActual = p.ctr / 100;
+      const potencial = Math.max(0, Math.round(p.impresiones * (0.28 - ctrActual)));
+      return { ...p, potencial };
+    })
+    .sort((a, b) => b.potencial - a.potencial)
+    .slice(0, 5);
+  return cercaDelTop.map(p => nombreLegibleDePagina(p.pagina));
+}
+
 app.post('/seo/plan-automatico', async (req, res) => {
   try {
     const textoLibre = typeof req.body.texto === 'string' ? req.body.texto : '';
     const prioridadesManual = Array.isArray(req.body.prioridades) ? req.body.prioridades : [];
     const prioridadesExtraidas = textoLibre ? await extraerPrioridades(textoLibre) : [];
-    const prioridades = prioridadesExtraidas.length > 0 ? prioridadesExtraidas : prioridadesManual;
+    const prioridadesEscritas = prioridadesExtraidas.length > 0 ? prioridadesExtraidas : prioridadesManual;
+
+    // Prioridad automatica: paginas en posicion 4-6 que hay que empujar a posicion 1,
+    // combinadas con lo que el usuario haya escrito a mano en la cajita
+    const prioridadesAuto = await generarPrioridadesAutomaticas();
+    const prioridades = [...new Set([...prioridadesEscritas, ...prioridadesAuto])];
+
     const plan = await generarPlanAutomatico(prioridades);
-    res.json({ ok: true, data: plan });
+    res.json({ ok: true, data: plan, prioridadesAuto });
   } catch (err) {
     res.json({ ok: false, error: err.message });
   }
