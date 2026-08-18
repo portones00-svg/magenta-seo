@@ -879,7 +879,7 @@ const { getAuthUrl, getTokensFromCode, loadTokens, verificarIdentidad } = requir
 const { getDiagnostico, getTodasLasKeywords, getComparativaHistorica, getComparativaCustom, getTodasLasPaginas, getKeywordsDePagina } = require('./gsc-diagnostico');
 const AnthropicSDK = require('@anthropic-ai/sdk');
 const anthropicClient = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
-const { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial, limpiarPlan } = require('./estrategia');
+const { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial, limpiarPlan, actualizarEntradaHistorial } = require('./estrategia');
 const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
 
 // Iniciar autorización con Google
@@ -1312,6 +1312,19 @@ app.get('/seo/estrategia', (req, res) => {
 
 app.post('/seo/estrategia', async (req, res) => {
   try {
+    // Antes de crear el ciclo nuevo, cerramos (congelamos) el ciclo anterior que siga abierto,
+    // para que su auditoria deje de recalcularse contra la fecha de hoy
+    const historialPrevio = cargarHistorial();
+    const cicloAbierto = [...historialPrevio].reverse().find(h => !h.cerrado);
+    if (cicloAbierto) {
+      const resultadoFinal = await calcularAuditoria(cicloAbierto);
+      actualizarEntradaHistorial(cicloAbierto.id, {
+        cerrado: true,
+        fechaCierre: new Date().toISOString(),
+        resultadoFinal,
+      });
+    }
+
     const historialId = Date.now().toString();
     const data = guardarPlan({ ...req.body, historialId });
 
@@ -1400,72 +1413,100 @@ app.get('/seo/estrategia/historial', (req, res) => {
 });
 
 // Comparativa proyectado vs real de una estrategia guardada
+// Calcula la auditoria (proyectado vs real) de una entrada del historial, en el momento en que se llama.
+// Se usa tanto para ver el resultado EN VIVO de un ciclo activo, como para CONGELAR el resultado
+// de un ciclo que se esta cerrando (se guarda ese resultado y no se vuelve a recalcular despues).
+async function calcularAuditoria(entrada) {
+  const fechaReferencia = entrada.fechaCierre ? new Date(entrada.fechaCierre) : new Date();
+  const diasTranscurridos = Math.floor((fechaReferencia.getTime() - new Date(entrada.fechaGuardado).getTime()) / (1000*60*60*24));
+
+  const diagActual = await getDiagnostico(28);
+  const totalClicsActual = diagActual.resumen.totalClics;
+  const deltaClicsTotal = totalClicsActual - (entrada.totalClicsBase || 0);
+
+  const todasPaginas = await getTodasLasPaginas(28);
+
+  let comparativaCompleta = null;
+  if (entrada.snapshotCompleto && entrada.snapshotCompleto.paginas) {
+    comparativaCompleta = entrada.snapshotCompleto.paginas.map(base => {
+      const actual = todasPaginas.find(p => p.pagina === base.pagina);
+      return {
+        pagina: base.pagina,
+        posicionBase: base.posicion,
+        posicionActual: actual ? actual.posicion : null,
+        clicsBase: base.clics,
+        clicsActual: actual ? actual.clics : 0,
+      };
+    });
+  }
+
+  const comparativa = entrada.paginasBase.map(base => {
+    const actual = todasPaginas.find(p => p.pagina === base.pagina);
+    return {
+      pagina: base.pagina,
+      posicionBase: base.posicionBase,
+      posicionActual: actual ? actual.posicion : null,
+      clicsBase: base.clicsBase,
+      clicsActual: actual ? actual.clics : 0,
+    };
+  });
+
+  let proyeccionRelevante = entrada.proyeccion30;
+  let hito = 30;
+  if (diasTranscurridos >= 90) { proyeccionRelevante = entrada.proyeccion90; hito = 90; }
+  else if (diasTranscurridos >= 60) { proyeccionRelevante = entrada.proyeccion60; hito = 60; }
+
+  const cumplimiento = proyeccionRelevante > 0 ? Math.round((deltaClicsTotal / proyeccionRelevante) * 100) : null;
+
+  const fuenteResumen = comparativaCompleta || comparativa;
+  let paginasMejoraronClics = 0;
+  let paginasMejoraronPosicion = 0;
+  let paginasConDatos = 0;
+  for (const p of fuenteResumen) {
+    if (p.posicionActual !== null) {
+      paginasConDatos++;
+      if (p.clicsActual > p.clicsBase) paginasMejoraronClics++;
+      if (p.posicionActual < p.posicionBase) paginasMejoraronPosicion++;
+    }
+  }
+  const resumen = {
+    totalPaginas: fuenteResumen.length,
+    paginasConDatos,
+    paginasMejoraronClics,
+    paginasMejoraronPosicion,
+    esSitioCompleto: !!comparativaCompleta,
+  };
+
+  return {
+    fechaGuardado: entrada.fechaGuardado,
+    diasTranscurridos,
+    hito,
+    totalClicsBase: entrada.totalClicsBase,
+    totalClicsActual,
+    deltaClicsTotal,
+    proyeccion30: entrada.proyeccion30,
+    proyeccion60: entrada.proyeccion60,
+    proyeccion90: entrada.proyeccion90,
+    cumplimiento,
+    resumen,
+    comparativa,
+  };
+}
+
 app.get('/seo/estrategia/auditoria/:id', async (req, res) => {
   try {
     const historial = cargarHistorial();
     const entrada = historial.find(h => h.id === req.params.id);
     if (!entrada) return res.json({ ok: false, error: 'No se encontro esa estrategia guardada' });
 
-    const diasTranscurridos = Math.floor((Date.now() - new Date(entrada.fechaGuardado).getTime()) / (1000*60*60*24));
-
-    const diagActual = await getDiagnostico(28);
-    const totalClicsActual = diagActual.resumen.totalClics;
-    const deltaClicsTotal = totalClicsActual - (entrada.totalClicsBase || 0);
-
-    const todasPaginas = await getTodasLasPaginas(28);
-    const comparativa = entrada.paginasBase.map(base => {
-      const actual = todasPaginas.find(p => p.pagina === base.pagina);
-      return {
-        pagina: base.pagina,
-        posicionBase: base.posicionBase,
-        posicionActual: actual ? actual.posicion : null,
-        clicsBase: base.clicsBase,
-        clicsActual: actual ? actual.clics : 0,
-      };
-    });
-
-    let proyeccionRelevante = entrada.proyeccion30;
-    let hito = 30;
-    if (diasTranscurridos >= 90) { proyeccionRelevante = entrada.proyeccion90; hito = 90; }
-    else if (diasTranscurridos >= 60) { proyeccionRelevante = entrada.proyeccion60; hito = 60; }
-
-    const cumplimiento = proyeccionRelevante > 0 ? Math.round((deltaClicsTotal / proyeccionRelevante) * 100) : null;
-
-    // Resumen: cuantas paginas mejoraron en clics y cuantas en posicion
-    let paginasMejoraronClics = 0;
-    let paginasMejoraronPosicion = 0;
-    let paginasConDatos = 0;
-    for (const p of comparativa) {
-      if (p.posicionActual !== null) {
-        paginasConDatos++;
-        if (p.clicsActual > p.clicsBase) paginasMejoraronClics++;
-        if (p.posicionActual < p.posicionBase) paginasMejoraronPosicion++;
-      }
+    // Si el ciclo ya esta cerrado, devolvemos el resultado que quedo congelado al momento de cerrar
+    // (no se vuelve a calcular con la fecha de hoy)
+    if (entrada.cerrado && entrada.resultadoFinal) {
+      return res.json({ ok: true, data: { ...entrada.resultadoFinal, cerrado: true, fechaCierre: entrada.fechaCierre } });
     }
-    const resumen = {
-      totalPaginas: comparativa.length,
-      paginasConDatos,
-      paginasMejoraronClics,
-      paginasMejoraronPosicion,
-    };
 
-    res.json({
-      ok: true,
-      data: {
-        fechaGuardado: entrada.fechaGuardado,
-        diasTranscurridos,
-        hito,
-        totalClicsBase: entrada.totalClicsBase,
-        totalClicsActual,
-        deltaClicsTotal,
-        proyeccion30: entrada.proyeccion30,
-        proyeccion60: entrada.proyeccion60,
-        proyeccion90: entrada.proyeccion90,
-        cumplimiento,
-        resumen,
-        comparativa,
-      }
-    });
+    const data = await calcularAuditoria(entrada);
+    res.json({ ok: true, data: { ...data, cerrado: false } });
   } catch(err) {
     res.json({ ok: false, error: err.message });
   }

@@ -81,4 +81,18 @@ function limpiarPlan() {
   }
 }
 
-module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial, limpiarPlan };
+function actualizarEntradaHistorial(id, cambios) {
+  try {
+    const historial = cargarHistorial();
+    const idx = historial.findIndex(h => h.id === id);
+    if (idx === -1) return null;
+    historial[idx] = { ...historial[idx], ...cambios };
+    fs.writeFileSync(HISTORIAL_FILE, JSON.stringify(historial, null, 2));
+    return historial[idx];
+  } catch(e) {
+    console.error('[HISTORIAL] Error actualizando:', e.message);
+    return null;
+  }
+}
+
+module.exports = { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial, limpiarPlan, actualizarEntradaHistorial };
