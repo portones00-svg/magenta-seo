@@ -226,7 +226,6 @@ function renderSeoPanel() {
       <div class="card">
         <div class="card-title">
           <span>Plan automático (<span id="planAutoCount">0</span> artículos)</span>
-          <button class="btn btn-secondary btn-sm" id="btnRegenerarPlan">🔄 Regenerar</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
           <input type="text" id="prioridadesInput" placeholder="¿Algo que priorizar este mes? Ej: Vitacura, Lo Barnechea, La Dehesa" style="flex:1;margin-bottom:0">
@@ -893,7 +892,6 @@ async function generarPlanAuto() {
   }
 }
 
-document.getElementById('btnRegenerarPlan').addEventListener('click', () => generarPlanAuto());
 document.getElementById('btnAplicarPrioridades').addEventListener('click', () => generarPlanAuto());
 
 document.getElementById('btnGuardarPlanAuto').addEventListener('click', async () => {
