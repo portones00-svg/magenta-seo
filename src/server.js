@@ -1391,6 +1391,7 @@ app.post('/seo/estrategia', async (req, res) => {
     // para que su auditoria deje de recalcularse contra la fecha de hoy
     const historialPrevio = cargarHistorial();
     const cicloAbierto = [...historialPrevio].reverse().find(h => !h.cerrado);
+    let tasaDiariaReal = null;
     if (cicloAbierto) {
       const resultadoFinal = await calcularAuditoria(cicloAbierto);
       actualizarEntradaHistorial(cicloAbierto.id, {
@@ -1398,6 +1399,11 @@ app.post('/seo/estrategia', async (req, res) => {
         fechaCierre: new Date().toISOString(),
         resultadoFinal,
       });
+      // Si el ciclo que se cierra tuvo un crecimiento real medible, usamos esa tasa
+      // (clics ganados por dia) para proyectar el ciclo nuevo, en vez del modelo fijo.
+      if (resultadoFinal.deltaClicsTotal > 0 && resultadoFinal.diasTranscurridos > 0) {
+        tasaDiariaReal = resultadoFinal.deltaClicsTotal / resultadoFinal.diasTranscurridos;
+      }
     }
 
     const historialId = Date.now().toString();
@@ -1435,9 +1441,9 @@ app.post('/seo/estrategia', async (req, res) => {
       fechaGuardado: new Date().toISOString(),
       articulosCount: items.length,
       totalClicsBase,
-      proyeccion30: Math.round(totalClicsBase * 0.08),
-      proyeccion60: Math.round(totalClicsBase * 0.20),
-      proyeccion90: Math.round(totalClicsBase * 0.35),
+      proyeccion30: tasaDiariaReal ? Math.round(tasaDiariaReal * 30) : Math.round(totalClicsBase * 0.08),
+      proyeccion60: tasaDiariaReal ? Math.round(tasaDiariaReal * 60) : Math.round(totalClicsBase * 0.20),
+      proyeccion90: tasaDiariaReal ? Math.round(tasaDiariaReal * 90) : Math.round(totalClicsBase * 0.35),
       paginasBase,
       snapshotCompleto: {
         paginas: todasPaginas,
