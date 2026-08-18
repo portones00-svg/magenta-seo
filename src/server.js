@@ -1096,7 +1096,8 @@ async function generarTemasDinamicos(cantidad, temasYaUsados, paginasExistentes)
   const prompt = 'Genera ' + cantidad + ' temas nuevos de articulos de blog para reparaciondeportones.cl (empresa chilena de reparacion, instalacion y mantencion de portones electricos, barreras vehiculares y cercos electricos).\n' +
     'Sigue este mismo estilo de patrones ya usados (varia el patron, no lo copies literal): "reparacion porton electrico [comuna]", "servicio tecnico portones [comuna]", "motor [marca] [tipo] [contexto]", "instalacion motor [marca] [contexto]".\n' +
     'NUNCA repitas literalmente ninguno de estos temas ya usados: ' + JSON.stringify(Array.from(temasYaUsados).slice(0, 60)) + '\n' +
-    'Prioriza comunas de Chile (especialmente Region Metropolitana, Valparaiso, Concepcion, La Serena, Antofagasta, Temuco) que NO aparezcan en esta lista de comunas que ya tienen pagina propia: ' + JSON.stringify(comunasConPagina) + '\n' +
+    'IMPORTANTE - cobertura real: la empresa SOLO opera y da servicio en Santiago (Region Metropolitana), Antofagasta, La Serena, Coquimbo, Viña del Mar, Concepcion y Temuco. NUNCA generes temas sobre comunas o ciudades fuera de estas zonas (por ejemplo, nunca Iquique, Valdivia, Punta Arenas, Arica, Puerto Montt, Rancagua, Talca, Chillan, u otras ciudades donde no se opera) - inventar cobertura ahi seria enganoso para un cliente real que lea el articulo.\n' +
+    'Dentro de esas zonas, prioriza comunas que NO aparezcan en esta lista de comunas que ya tienen pagina propia: ' + JSON.stringify(comunasConPagina) + '\n' +
     'Marcas conocidas en el mercado chileno que puedes usar: FAAC, BFT, Nice, Centurion, Rossi, PPA, SEA.\n' +
     'Responde SOLO con un array JSON, sin markdown: [{"tema": "...", "marca": "nice|bft|centurion|", "carpeta": "blog|nice|bft|centurion"}]';
 
@@ -1336,7 +1337,7 @@ async function generarPrioridadesAutomaticas() {
     })
     .sort((a, b) => b.potencial - a.potencial)
     .slice(0, 5);
-  return cercaDelTop.map(p => nombreLegibleDePagina(p.pagina));
+  return cercaDelTop.map(p => 'reparación portón eléctrico ' + nombreLegibleDePagina(p.pagina));
 }
 
 app.post('/seo/plan-automatico', async (req, res) => {
