@@ -1378,6 +1378,24 @@ app.post('/seo/plan-automatico', async (req, res) => {
   }
 });
 
+// Calcula la tasa de crecimiento real del ciclo activo (sin cerrarlo), para que la
+// vista previa del plan use la misma logica de proyeccion que despues se aplica al guardar
+app.get('/seo/estrategia/proyeccion-real', async (req, res) => {
+  try {
+    const historial = cargarHistorial();
+    const cicloAbierto = [...historial].reverse().find(h => !h.cerrado);
+    if (!cicloAbierto) return res.json({ ok: true, tasaDiariaReal: null });
+
+    const resultado = await calcularAuditoria(cicloAbierto);
+    const tasaDiariaReal = (resultado.deltaClicsTotal > 0 && resultado.diasTranscurridos > 0)
+      ? resultado.deltaClicsTotal / resultado.diasTranscurridos
+      : null;
+    res.json({ ok: true, tasaDiariaReal });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 // Compatibilidad: version GET sin prioridades
 app.get('/seo/plan-automatico', async (req, res) => {
   try {

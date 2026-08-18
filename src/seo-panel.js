@@ -829,12 +829,12 @@ function renderExplicacionPlan(data) {
     </div>\`;
 }
 
-function renderMetaEstrategia(totalClicsActual) {
-  // Modelo conservador anclado al trafico real actual, no a potenciales optimistas sumados.
-  // Rangos tipicos de crecimiento organico real para un sitio chico con trabajo consistente de SEO.
-  const p30 = Math.round(totalClicsActual * 0.08);
-  const p60 = Math.round(totalClicsActual * 0.20);
-  const p90 = Math.round(totalClicsActual * 0.35);
+function renderMetaEstrategia(totalClicsActual, tasaDiariaReal) {
+  // Si el ciclo activo ya mostro crecimiento real medible, la meta se ancla a esa tasa real
+  // (misma logica que se aplica al guardar el plan) - si no, cae al modelo conservador fijo.
+  const p30 = tasaDiariaReal ? Math.round(tasaDiariaReal * 30) : Math.round(totalClicsActual * 0.08);
+  const p60 = tasaDiariaReal ? Math.round(tasaDiariaReal * 60) : Math.round(totalClicsActual * 0.20);
+  const p90 = tasaDiariaReal ? Math.round(tasaDiariaReal * 90) : Math.round(totalClicsActual * 0.35);
 
   document.getElementById('metaEstrategia').innerHTML = \`
     <div class="grid3">
@@ -872,7 +872,9 @@ async function generarPlanAuto() {
     try {
       const resumenRes = await fetchGSC('/seo/data?dias=28');
       const totalClicsActual = (resumenRes.ok && resumenRes.data && resumenRes.data.resumen) ? resumenRes.data.resumen.totalClics : 0;
-      renderMetaEstrategia(totalClicsActual);
+      const proyeccionRes = await fetchGSC('/seo/estrategia/proyeccion-real');
+      const tasaDiariaReal = (proyeccionRes.ok && proyeccionRes.tasaDiariaReal) ? proyeccionRes.tasaDiariaReal : null;
+      renderMetaEstrategia(totalClicsActual, tasaDiariaReal);
     } catch(e2) {
       document.getElementById('metaEstrategia').innerHTML = '';
     }
