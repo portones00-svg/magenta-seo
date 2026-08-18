@@ -1105,7 +1105,11 @@ async function generarPlanAutomatico(prioridades = []) {
       yaUsados.add(nuevoTema);
     }
   });
-  const resto = KW_SUGERIDAS.filter(t => !yaUsados.has(t.tema));
+  // Nunca repetir literalmente un tema ya usado en cualquier ciclo anterior (evita contenido duplicado).
+  // Si un mismo tema exacto ya se publico o esta en cola, se descarta - pero otros angulos distintos
+  // de la misma marca/ciudad en KW_SUGERIDAS siguen disponibles, para poder reforzar con 2-4 articulos.
+  const temasYaUsadosHistorico = new Set(obtenerCola().map(item => item.tema));
+  const resto = KW_SUGERIDAS.filter(t => !yaUsados.has(t.tema) && !temasYaUsadosHistorico.has(t.tema));
   const listaTemas = [...prioritarios, ...resto];
 
   // Arreglos rapidos: paginas que YA rankean bien (posicion <= 6) pero con
