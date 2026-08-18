@@ -29,8 +29,20 @@ app.use(session({
 }));
 
 // Rutas publicas que NO requieren estar logueado
-const RUTAS_PUBLICAS = ['/login', '/auth/google', '/auth/callback', '/health', '/agente-seo'];
+const RUTAS_PUBLICAS = ['/login', '/auth/google', '/auth/callback', '/health', '/agente-seo', '/privacidad', '/terminos', '/soporte', '/terminos-datos'];
 app.use(requireAuth(RUTAS_PUBLICAS));
+
+
+app.get('/privacidad', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/privacidad.html'));
+});
+app.get('/terminos', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/terminos.html'));
+});
+app.get('/soporte', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/soporte.html'));
+});
+
 
 app.get('/agente-seo', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'landing.html'));
@@ -939,15 +951,6 @@ app.get('/auth/callback', async (req, res) => {
 
 // Terminos y condiciones de datos
 
-app.get('/privacidad', (req, res) => {
-  res.sendFile(require('path').join(__dirname, '../public/privacidad.html'));
-});
-app.get('/terminos', (req, res) => {
-  res.sendFile(require('path').join(__dirname, '../public/terminos.html'));
-});
-app.get('/soporte', (req, res) => {
-  res.sendFile(require('path').join(__dirname, '../public/soporte.html'));
-});
 
 app.get('/terminos-datos', (req, res) => {
   res.send(`<!DOCTYPE html>
