@@ -1423,6 +1423,24 @@ app.get('/seo/estrategia/auditoria/:id', async (req, res) => {
 
     const cumplimiento = proyeccionRelevante > 0 ? Math.round((deltaClicsTotal / proyeccionRelevante) * 100) : null;
 
+    // Resumen: cuantas paginas mejoraron en clics y cuantas en posicion
+    let paginasMejoraronClics = 0;
+    let paginasMejoraronPosicion = 0;
+    let paginasConDatos = 0;
+    for (const p of comparativa) {
+      if (p.posicionActual !== null) {
+        paginasConDatos++;
+        if (p.clicsActual > p.clicsBase) paginasMejoraronClics++;
+        if (p.posicionActual < p.posicionBase) paginasMejoraronPosicion++;
+      }
+    }
+    const resumen = {
+      totalPaginas: comparativa.length,
+      paginasConDatos,
+      paginasMejoraronClics,
+      paginasMejoraronPosicion,
+    };
+
     res.json({
       ok: true,
       data: {
@@ -1436,6 +1454,7 @@ app.get('/seo/estrategia/auditoria/:id', async (req, res) => {
         proyeccion60: entrada.proyeccion60,
         proyeccion90: entrada.proyeccion90,
         cumplimiento,
+        resumen,
         comparativa,
       }
     });

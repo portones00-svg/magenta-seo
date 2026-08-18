@@ -777,6 +777,10 @@ async function abrirModalAuditoria(id) {
         <div class="metric"><div class="metric-val">\${d.totalClicsActual}</div><div class="metric-lab">Clics/mes ahora</div></div>
         <div class="metric"><div class="metric-val" style="color:\${cumplimientoColor}">\${d.cumplimiento ?? '—'}%</div><div class="metric-lab">Cumplimiento meta \${d.hito}d</div></div>
       </div>
+      \${d.resumen ? \`<p style="font-size:13px;color:#444;margin-bottom:16px;background:#f6f6f4;padding:10px 12px;border-radius:6px">
+        📈 <strong>\${d.resumen.paginasMejoraronClics}</strong> de \${d.resumen.paginasConDatos} páginas mejoraron en clics &nbsp;·&nbsp;
+        📊 <strong>\${d.resumen.paginasMejoraronPosicion}</strong> de \${d.resumen.paginasConDatos} páginas mejoraron en posición
+      </p>\` : ''}
       <table>
         <thead><tr><th>Página</th><th>Posición (antes → ahora)</th><th>Clics (antes → ahora)</th></tr></thead>
         <tbody>\${filasComparativa || '<tr><td colspan="3" class="empty">Sin páginas para comparar</td></tr>'}</tbody>
