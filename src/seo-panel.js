@@ -712,9 +712,59 @@ async function refrescarPlanGuardadoBox() {
 
 async function cargarEstrategia() {
   window.__estrategiaCargada = true;
-  await refrescarPlanGuardadoBox();
-  await generarPlanAuto();
+  const existente = await fetchGSC('/seo/estrategia').catch(() => null);
+  const planGuardado = (existente && existente.ok && existente.data && (existente.data.items || []).length > 0) ? existente.data : null;
+  if (planGuardado) {
+    await mostrarPlanGuardado(planGuardado);
+  } else {
+    await refrescarPlanGuardadoBox();
+    await generarPlanAuto();
+  }
   await cargarHistorialEstrategias();
+}
+
+async function mostrarPlanGuardado(plan) {
+  document.getElementById('planGuardadoBox').innerHTML = \`
+    <div class="plan-summary">
+      <h3>\ud83d\udccc Mostrando el último plan guardado (actualizado \${new Date(plan.actualizadoEn).toLocaleDateString('es-CL')})</h3>
+      <div style="font-size:12px;color:#666">\${(plan.items || []).length} artículos guardados — pulsa "Aplicar prioridades" para generar uno nuevo</div>
+    </div>\`;
+  planAutoData = plan.items || [];
+  const arreglos = plan.arreglos || [];
+  document.getElementById('planAutoCount').textContent = planAutoData.length;
+  document.getElementById('planAutoBody').innerHTML = planAutoData.map(item => \`<tr>
+    <td>\${item.fecha}</td>
+    <td>\${item.tema}</td>
+    <td>\${item.marca || '—'}</td>
+    <td>\${item.enlazarA ? item.enlazarA : 'Sin sugerencia'}\${item.enlazarPotencial ? ' <span class="delta-up">(+' + item.enlazarPotencial + ' clics/mes)</span>' : ''}</td>
+  </tr>\`).join('') || '<tr><td colspan="4" class="empty">No hay temas guardados</td></tr>';
+  if (planAutoData.length > 0) renderExplicacionPlan(planAutoData);
+
+  arreglosData = arreglos;
+  try {
+    const resumenRes = await fetchGSC('/seo/data?dias=28');
+    const totalClicsActual = (resumenRes.ok && resumenRes.data && resumenRes.data.resumen) ? resumenRes.data.resumen.totalClics : 0;
+    const proyeccionRes = await fetchGSC('/seo/estrategia/proyeccion-real');
+    const tasaDiariaReal = (proyeccionRes.ok && proyeccionRes.tasaDiariaReal) ? proyeccionRes.tasaDiariaReal : null;
+    renderMetaEstrategia(totalClicsActual, tasaDiariaReal);
+  } catch(e2) {
+    document.getElementById('metaEstrategia').innerHTML = '';
+  }
+  document.getElementById('arreglosRapidosBody').innerHTML = arreglos.length > 0
+    ? arreglos.map((a, i) => \`<tr>
+        <td>\${a.pagina}</td>
+        <td><span class="badge badge-ok">\${a.posicion}</span></td>
+        <td>\${a.ctr}%</td>
+        <td><span class="delta-up">+\${a.potencial} clics/mes</span></td>
+        <td><button class="btn btn-secondary btn-sm" data-idx-arreglo="\${i}">Ver propuesta</button></td>
+      </tr>\`).join('')
+    : '<tr><td colspan="5" class="empty">No se detectaron arreglos urgentes esta semana</td></tr>';
+  document.querySelectorAll('[data-idx-arreglo]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = arreglosData[parseInt(btn.dataset.idxArreglo)];
+      abrirModalSugerencia(a.pagina, a.posicion, a.ctr);
+    });
+  });
 }
 
 async function cargarHistorialEstrategias() {

@@ -938,6 +938,17 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 // Terminos y condiciones de datos
+
+app.get('/privacidad', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/privacidad.html'));
+});
+app.get('/terminos', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/terminos.html'));
+});
+app.get('/soporte', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/soporte.html'));
+});
+
 app.get('/terminos-datos', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="es">
