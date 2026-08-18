@@ -409,7 +409,7 @@ async function generarYAgregarACola() {
     const res = await fetch('/generar-para-cola', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ tema, marca, carpeta, fechaProgramada: fecha })
+      body: JSON.stringify({ tema, marca, carpeta, fechaProgramada: fecha, esCustom: !!temaCustom })
     });
     setProgress(80);
     const data = await res.json();
@@ -630,10 +630,23 @@ function renderCola() {
 
 // Generar artículo y agregar a la cola
 app.post('/generar-para-cola', async (req, res) => {
-  const { tema, marca, carpeta = 'blog', fechaProgramada } = req.body;
+  let { tema, marca, carpeta = 'blog', fechaProgramada, esCustom } = req.body;
   if (!tema) return res.json({ ok: false, error: 'Falta el tema' });
 
   try {
+    // Si el tema vino escrito a mano (no elegido del listado fijo), lo refinamos con Claude
+    // antes de generar el articulo - solo se llama aqui, nunca al cargar la pagina.
+    if (esCustom) {
+      const msgRefinar = await anthropicClient.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: 'Eres un experto en SEO para una empresa chilena de reparacion e instalacion de portones electricos. Recibes una idea corta de un usuario y la conviertes en un tema de articulo bien formado, en el estilo "reparacion porton electrico [comuna]" o "servicio tecnico [marca/tema] [contexto]". No inventes datos del negocio que no te den. Responde SOLO con el tema final, sin comillas ni explicacion.',
+        messages: [{ role: 'user', content: 'Idea del usuario: ' + tema }]
+      });
+      const temaRefinado = msgRefinar.content[0].text.trim();
+      if (temaRefinado) tema = temaRefinado;
+    }
+
     const meta = await generarMetadata({ tema, marca, tipo: 'articulo' });
     const contenido = await generarArticulo({ tema, marca, slug: meta.slug });
     const { isoDate, dateStr } = buildDate(0);
@@ -1073,6 +1086,29 @@ async function extraerPrioridades(textoLibre) {
   }
 }
 
+async function generarTemasDinamicos(cantidad, temasYaUsados, paginasExistentes) {
+  if (cantidad <= 0) return [];
+  const comunasConPagina = paginasExistentes
+    .filter(p => /^\/?(a-domicilio-en-|en-)/.test(p))
+    .map(p => p.replace(/^\//, '').replace(/\.html$/, '').replace(/^a-domicilio-en-|^en-/, ''));
+
+  const prompt = 'Genera ' + cantidad + ' temas nuevos de articulos de blog para reparaciondeportones.cl (empresa chilena de reparacion, instalacion y mantencion de portones electricos, barreras vehiculares y cercos electricos).\n' +
+    'Sigue este mismo estilo de patrones ya usados (varia el patron, no lo copies literal): "reparacion porton electrico [comuna]", "servicio tecnico portones [comuna]", "motor [marca] [tipo] [contexto]", "instalacion motor [marca] [contexto]".\n' +
+    'NUNCA repitas literalmente ninguno de estos temas ya usados: ' + JSON.stringify(Array.from(temasYaUsados).slice(0, 60)) + '\n' +
+    'Prioriza comunas de Chile (especialmente Region Metropolitana, Valparaiso, Concepcion, La Serena, Antofagasta, Temuco) que NO aparezcan en esta lista de comunas que ya tienen pagina propia: ' + JSON.stringify(comunasConPagina) + '\n' +
+    'Marcas conocidas en el mercado chileno que puedes usar: FAAC, BFT, Nice, Centurion, Rossi, PPA, SEA.\n' +
+    'Responde SOLO con un array JSON, sin markdown: [{"tema": "...", "marca": "nice|bft|centurion|", "carpeta": "blog|nice|bft|centurion"}]';
+
+  const msg = await anthropicClient.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
+    system: 'Eres un experto en SEO y content marketing para una empresa chilena de portones electricos. Generas temas de articulos realistas, variados y utiles, sin inventar datos falsos del negocio.',
+    messages: [{ role: 'user', content: prompt }]
+  });
+  const texto = msg.content[0].text.trim().replace(/```json|```/g, '').trim();
+  return JSON.parse(texto);
+}
+
 async function generarPlanAutomatico(prioridades = []) {
   const paginas = await getTodasLasPaginas(90);
   const comerciales = paginas
@@ -1093,23 +1129,21 @@ async function generarPlanAutomatico(prioridades = []) {
   const prioritarios = [];
   const yaUsados = new Set();
   prioridades.forEach(prio => {
-    const prioNorm = normalizarTexto(prio);
-    if (!prioNorm) return;
-    const existente = KW_SUGERIDAS.find(t => normalizarTexto(t.tema).includes(prioNorm) && !yaUsados.has(t.tema));
-    if (existente) {
-      prioritarios.push(existente);
-      yaUsados.add(existente.tema);
-    } else {
-      const nuevoTema = 'reparación portón eléctrico ' + prio.trim();
-      prioritarios.push({ tema: nuevoTema, marca: '', carpeta: 'blog' });
-      yaUsados.add(nuevoTema);
-    }
+    const prioTexto = prio.trim();
+    if (!prioTexto) return;
+    const nuevoTema = 'reparación portón eléctrico ' + prioTexto;
+    prioritarios.push({ tema: nuevoTema, marca: '', carpeta: 'blog' });
+    yaUsados.add(nuevoTema);
   });
+
   // Nunca repetir literalmente un tema ya usado en cualquier ciclo anterior (evita contenido duplicado).
-  // Si un mismo tema exacto ya se publico o esta en cola, se descarta - pero otros angulos distintos
-  // de la misma marca/ciudad en KW_SUGERIDAS siguen disponibles, para poder reforzar con 2-4 articulos.
   const temasYaUsadosHistorico = new Set(obtenerCola().map(item => item.tema));
-  const resto = KW_SUGERIDAS.filter(t => !yaUsados.has(t.tema) && !temasYaUsadosHistorico.has(t.tema));
+  const todosLosUsados = new Set([...temasYaUsadosHistorico, ...yaUsados]);
+
+  // El resto del plan se genera con IA en el momento, considerando lo que ya existe - no hay lista fija.
+  const META_ARTICULOS_MES = 30;
+  const faltantes = Math.max(0, META_ARTICULOS_MES - prioritarios.length);
+  const resto = await generarTemasDinamicos(faltantes, todosLosUsados, paginas.map(p => p.pagina));
   const listaTemas = [...prioritarios, ...resto];
 
   // Arreglos rapidos: paginas que YA rankean bien (posicion <= 6) pero con
