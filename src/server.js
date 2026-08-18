@@ -1072,8 +1072,8 @@ async function extraerPrioridades(textoLibre) {
   try {
     const msg = await anthropicClient.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      system: 'Extraes nombres de comunas, ciudades o marcas de portones mencionados en un texto en español escrito por un usuario (puede tener errores de tipeo y ortografia). Corrige la ortografia de cada nombre (ej: "lo barnechea" -> "Lo Barnechea", "nunoa" -> "Ñuñoa"). Ignora cualquier palabra que no sea un lugar o marca real (relleno conversacional como "quiero que", "me gusta", "tambien dentro de tus ambitos", etc). Responde SOLO con un array JSON de strings, sin texto adicional, sin markdown, sin explicacion. Si no detectas ningun lugar o marca real, responde [].',
+      max_tokens: 800,
+      system: 'Analizas un texto en español (con posibles errores de tipeo) escrito por el dueño de una empresa chilena de reparación e instalación de portones eléctricos, donde describe qué contenido quiere priorizar este mes. Extrae una lista de TEMAS DE ARTÍCULO completos y listos para usar - no solo nombres de lugares. Reglas: (1) Si menciona una comuna o ciudad sin más detalle, genera el tema "reparación portón eléctrico [Comuna]" con la ortografía corregida (ej "lo barnechea" -> "Lo Barnechea"). (2) Si menciona un pedido más específico y completo (por ejemplo un servicio, una industria, una capacidad técnica real del negocio como un inspector certificado, un tipo de ensayo, portones industriales, portones para minería, etc), escribe el tema capturando ese detalle real tal como el usuario lo describió - NO lo descartes ni lo conviertas en genérico, y NO inventes datos que el usuario no dio. (3) Si pide varios artículos de un mismo tema (ej "3 artículos de portones industriales"), genera esa cantidad de temas relacionados pero con ángulos distintos. Ignora solo relleno conversacional sin contenido real (ej "quiero que", "además"). Responde SOLO con un array JSON de strings, cada uno un tema de artículo completo, sin markdown ni explicación. Si no detectas ningún pedido real, responde [].',
       messages: [{ role: 'user', content: textoLibre }]
     });
     const texto = msg.content[0].text.trim();
@@ -1125,15 +1125,15 @@ async function generarPlanAutomatico(prioridades = []) {
 
   const hoy = new Date();
 
-  // Insertar prioridades del usuario al principio de la lista de temas
+  // extraerPrioridades ya devuelve temas de articulo completos y listos para usar
+  // (no solo nombres de lugares) - se usan tal cual, sin agregarles prefijo.
   const prioritarios = [];
   const yaUsados = new Set();
   prioridades.forEach(prio => {
     const prioTexto = prio.trim();
     if (!prioTexto) return;
-    const nuevoTema = 'reparación portón eléctrico ' + prioTexto;
-    prioritarios.push({ tema: nuevoTema, marca: '', carpeta: 'blog' });
-    yaUsados.add(nuevoTema);
+    prioritarios.push({ tema: prioTexto, marca: '', carpeta: 'blog' });
+    yaUsados.add(prioTexto);
   });
 
   // Nunca repetir literalmente un tema ya usado en cualquier ciclo anterior (evita contenido duplicado).
