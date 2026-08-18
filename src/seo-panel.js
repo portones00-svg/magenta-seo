@@ -815,9 +815,14 @@ function renderExplicacionPlan(data) {
     ? \`<p style="font-size:13px;line-height:1.7;margin-top:10px;padding-top:10px;border-top:1px solid #cde3c6"><strong>Sobre lo que pediste:</strong> \${prioritariosData.map(item => item.tema + ' → ' + (item.enlazarA || 'sin página asignada aún')).join('; ')}. Quedaron primeras en el calendario de este mes.</p>\`
     : '';
 
+  // La frase de apertura describe el contenido real del plan, no un texto fijo
+  const marcasUsadas = [...new Set(data.map(item => item.marca).filter(Boolean))]
+    .map(m => m.charAt(0).toUpperCase() + m.slice(1));
+  const marcasTexto = marcasUsadas.length > 0 ? 'artículos de marca (' + marcasUsadas.join(', ') + ') y ' : '';
+
   document.getElementById('planExplicacion').innerHTML = \`
     <div class="plan-summary">
-      <p style="font-size:13px;line-height:1.7;margin-bottom:10px"><strong>Qué va a hacer:</strong> este plan crea \${nuevas} páginas nuevas de contenido a lo largo del mes — artículos de marca (Nice, BFT, Centurion) y de ciudades donde hoy no tienes cobertura. Cada una queda indexada con una keyword objetivo distinta.</p>
+      <p style="font-size:13px;line-height:1.7;margin-bottom:10px"><strong>Qué va a hacer:</strong> este plan crea \${nuevas} páginas nuevas de contenido a lo largo del mes — \${marcasTexto}artículos de temas y ciudades donde hoy no tienes cobertura. Cada una queda indexada con una keyword objetivo distinta.</p>
       <p style="font-size:13px;line-height:1.7;margin-bottom:10px"><strong>Resultado esperado:</strong> no es solo tráfico nuevo — cada artículo enlaza internamente a la página comercial existente que más necesita el empuje. En total, este plan refuerza \${paginasUnicas.length} páginas ya publicadas, con un potencial combinado de +\${potencialTotal} clics/mes si logran llegar a posición 1.</p>
       <p style="font-size:13px;line-height:1.7"><strong>Cómo lo hace:</strong> reparte los enlaces para no sobrecargar una sola página. Las que más refuerzo reciben este mes son: \${topTexto}.</p>
       \${prioridadesHtml}
