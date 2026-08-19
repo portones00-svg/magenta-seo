@@ -933,6 +933,17 @@ cron.schedule('0 10 * * *', async () => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+app.post('/admin/migrar-db', async (req, res) => {
+  try {
+    const resultado = await ejecutarMigracion();
+    res.json({ ok: true, resultado });
+  } catch (err) {
+    console.error('[MIGRACION] Error:', err);
+    res.json({ ok: false, error: err.message });
+  }
+});
+
 app.listen(PORT, () => console.log('[SERVER] Puerto', PORT));
 
 // ─── RUTAS SEO / SEARCH CONSOLE ──────────────────────────────────────────────
@@ -942,6 +953,7 @@ const AnthropicSDK = require('@anthropic-ai/sdk');
 const anthropicClient = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
 const { cargarPlan, guardarPlan, cargarHistorial, guardarEnHistorial, eliminarDeHistorial, limpiarPlan, actualizarEntradaHistorial } = require('./estrategia');
 const { renderSeoPanel, renderConnectCard, renderSidebar } = require('./seo-panel');
+const { ejecutarMigracion } = require('./migrar-db');
 
 // Iniciar autorización con Google
 app.get('/auth/google', (req, res) => {
