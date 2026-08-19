@@ -93,3 +93,18 @@ CREATE INDEX IF NOT EXISTS idx_sitios_cuenta ON sitios(cuenta_id);
 CREATE INDEX IF NOT EXISTS idx_cola_sitio_fecha ON cola_articulos(sitio_id, fecha_programada);
 CREATE INDEX IF NOT EXISTS idx_historial_sitio ON historial_ciclos(sitio_id);
 CREATE INDEX IF NOT EXISTS idx_temas_sitio ON temas_usados(sitio_id);
+
+-- Ajustes (2026-08-19): historial_ciclos.id pasa a TEXT porque la app genera
+-- sus propios ids (timestamps), no se usa autoincremental. planes_estrategia
+-- gana historial_id para saber a que ciclo del historial pertenece el plan activo.
+ALTER TABLE historial_ciclos ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE historial_ciclos ALTER COLUMN id TYPE TEXT USING id::text;
+ALTER TABLE planes_estrategia ADD COLUMN IF NOT EXISTS historial_id TEXT;
+
+-- Ajuste (2026-08-19): historial_ciclos guarda un RESUMEN del ciclo, no la
+-- lista completa de articulos (eso vive solo en planes_estrategia). items/arreglos
+-- quedan nullable y sin uso real; se agregan las columnas que la app usa de verdad.
+ALTER TABLE historial_ciclos ALTER COLUMN items DROP NOT NULL;
+ALTER TABLE historial_ciclos ADD COLUMN IF NOT EXISTS articulos_count INTEGER;
+ALTER TABLE historial_ciclos ADD COLUMN IF NOT EXISTS total_clics_base NUMERIC;
+ALTER TABLE historial_ciclos ADD COLUMN IF NOT EXISTS paginas_base JSONB;

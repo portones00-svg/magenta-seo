@@ -1444,7 +1444,7 @@ app.post('/seo/plan-automatico', async (req, res) => {
 // vista previa del plan use la misma logica de proyeccion que despues se aplica al guardar
 app.get('/seo/estrategia/proyeccion-real', async (req, res) => {
   try {
-    const historial = cargarHistorial();
+    const historial = await cargarHistorial();
     const cicloAbierto = [...historial].reverse().find(h => !h.cerrado);
     if (!cicloAbierto) return res.json({ ok: true, tasaDiariaReal: null });
 
@@ -1469,9 +1469,9 @@ app.get('/seo/plan-automatico', async (req, res) => {
 });
 
 // Plan de estrategia del mes
-app.get('/seo/estrategia', (req, res) => {
+app.get('/seo/estrategia', async (req, res) => {
   try {
-    const data = cargarPlan();
+    const data = await cargarPlan();
     res.json({ ok: true, data });
   } catch(err) {
     res.json({ ok: false, error: err.message });
@@ -1482,12 +1482,12 @@ app.post('/seo/estrategia', async (req, res) => {
   try {
     // Antes de crear el ciclo nuevo, cerramos (congelamos) el ciclo anterior que siga abierto,
     // para que su auditoria deje de recalcularse contra la fecha de hoy
-    const historialPrevio = cargarHistorial();
+    const historialPrevio = await cargarHistorial();
     const cicloAbierto = [...historialPrevio].reverse().find(h => !h.cerrado);
     let tasaDiariaReal = null;
     if (cicloAbierto) {
       const resultadoFinal = await calcularAuditoria(cicloAbierto);
-      actualizarEntradaHistorial(cicloAbierto.id, {
+      await actualizarEntradaHistorial(cicloAbierto.id, {
         cerrado: true,
         fechaCierre: new Date().toISOString(),
         resultadoFinal,
@@ -1500,7 +1500,7 @@ app.post('/seo/estrategia', async (req, res) => {
     }
 
     const historialId = Date.now().toString();
-    const data = guardarPlan({ ...req.body, historialId });
+    const data = await guardarPlan({ ...req.body, historialId });
 
     // Snapshot para el historial - linea base real de las paginas objetivo
     const items = req.body.items || [];
@@ -1529,7 +1529,7 @@ app.post('/seo/estrategia', async (req, res) => {
     // comparar el ciclo completo contra hoy, no solo las paginas que este plan toco
     const todasKeywords = await getTodasLasKeywords(28);
 
-    guardarEnHistorial({
+    await guardarEnHistorial({
       id: historialId,
       fechaGuardado: new Date().toISOString(),
       articulosCount: items.length,
@@ -1563,12 +1563,12 @@ app.post('/seo/estrategia', async (req, res) => {
 });
 
 // Elimina una estrategia guardada del historial
-app.delete('/seo/estrategia/historial/:id', (req, res) => {
+app.delete('/seo/estrategia/historial/:id', async (req, res) => {
   try {
-    const ok = eliminarDeHistorial(req.params.id);
-    const planActual = cargarPlan();
+    const ok = await eliminarDeHistorial(req.params.id);
+    const planActual = await cargarPlan();
     if (planActual && planActual.historialId === req.params.id) {
-      limpiarPlan();
+      await limpiarPlan();
     }
     res.json({ ok });
   } catch(err) {
@@ -1577,9 +1577,9 @@ app.delete('/seo/estrategia/historial/:id', (req, res) => {
 });
 
 // Lista de estrategias guardadas (mas reciente primero)
-app.get('/seo/estrategia/historial', (req, res) => {
+app.get('/seo/estrategia/historial', async (req, res) => {
   try {
-    const historial = cargarHistorial();
+    const historial = await cargarHistorial();
     res.json({ ok: true, data: historial.slice().reverse() });
   } catch(err) {
     res.json({ ok: false, error: err.message });
@@ -1669,7 +1669,7 @@ async function calcularAuditoria(entrada) {
 
 app.get('/seo/estrategia/auditoria/:id', async (req, res) => {
   try {
-    const historial = cargarHistorial();
+    const historial = await cargarHistorial();
     const entrada = historial.find(h => h.id === req.params.id);
     if (!entrada) return res.json({ ok: false, error: 'No se encontro esa estrategia guardada' });
 
