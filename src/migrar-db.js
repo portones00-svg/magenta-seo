@@ -99,6 +99,16 @@ async function ejecutarMigracion() {
   }
   resultado.pasos.push(`Historial migrado/actualizado (${historialMigrados} ciclos)`);
 
+  // Limpieza: filas basura del primer intento de migracion, que quedaron con un
+  // id numerico corto (1, 2...) en vez del id real tipo timestamp que usa la app.
+  const limpieza = await query(
+    "DELETE FROM historial_ciclos WHERE sitio_id = $1 AND id ~ '^[0-9]{1,4}$' RETURNING id",
+    [sitioId]
+  );
+  if (limpieza.rows.length > 0) {
+    resultado.pasos.push(`Limpiadas ${limpieza.rows.length} filas basura del primer intento (ids: ${limpieza.rows.map(r => r.id).join(', ')})`);
+  }
+
   // 6) Migrar cola (solo si esta vacia para este sitio, para no duplicar articulos)
   const colaExistente = await query('SELECT id FROM cola_articulos WHERE sitio_id = $1 LIMIT 1', [sitioId]);
   if (colaExistente.rows.length === 0) {
