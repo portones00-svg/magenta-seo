@@ -179,6 +179,7 @@ app.get('/', (req, res) => {
     .layout{display:flex;min-height:100vh}
     .sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e5;padding:20px 0;flex-shrink:0}
     .sidebar h1{font-size:16px;font-weight:600;color:#216416;padding:0 20px 20px}
+    .sidebar-top{padding:0 20px 20px}
     .nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;font-size:13px;color:#666;cursor:pointer;border-left:3px solid transparent;text-decoration:none}
     .nav-item:hover{background:#f5f5f5}
     .nav-item.active{background:#eef6ec;color:#216416;font-weight:500;border-left-color:#216416}
