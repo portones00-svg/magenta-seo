@@ -6,13 +6,21 @@ const { query } = require('./db');
 // TODO: reemplazar por el sitio activo de la sesion cuando exista el selector de sitios.
 const SITIO_ACTIVO_ID = 1;
 
+function formatearFecha(valor) {
+  if (!valor) return null;
+  if (typeof valor === 'string') return valor;
+  // Postgres devuelve columnas DATE como objetos Date de JS - las convertimos
+  // de vuelta a 'YYYY-MM-DD' porque todo el resto del codigo compara strings.
+  return valor.toISOString().split('T')[0];
+}
+
 function mapRow(r) {
   return {
     id: String(r.id),
     tema: r.tema,
     marca: r.marca || '',
     carpeta: r.carpeta || 'blog',
-    fechaProgramada: r.fecha_programada,
+    fechaProgramada: formatearFecha(r.fecha_programada),
     estado: r.estado,
     contenido: r.contenido_html,
     canonical: r.canonical,
