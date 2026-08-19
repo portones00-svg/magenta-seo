@@ -12,19 +12,24 @@ function renderSidebar(active) {
   }).join('\n    ');
   const publicacionActive = active === 'publicacion' || active === 'calendario';
   return `<div class="sidebar">
-    <h1>\ud83d\ude80 Magenta SEO</h1>
-    ${linksHtml}
-    <a class="nav-item${publicacionActive ? ' active' : ''}" href="/#cola" data-view="publicacion">\ud83d\udce4 Publicación</a>
-    <div style="padding:14px 20px 0">
-      <a href="/terminos-datos" target="_blank" style="font-size:11px;color:#999">Términos y condiciones de datos</a>
+    <div class="sidebar-top">
+      <h1>\ud83d\ude80 Magenta SEO</h1>
+      <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('mobile-open')" aria-label="Abrir menú">\u2630</button>
     </div>
-    <div style="margin-top:auto;padding:20px">
-      <a href="/logout" title="Cerrar sesión" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f45c5c,#e02424);text-decoration:none;box-shadow:0 2px 6px rgba(224,36,36,0.35)">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-          <line x1="12" y1="2" x2="12" y2="12"></line>
-        </svg>
-      </a>
+    <div class="sidebar-nav">
+      ${linksHtml}
+      <a class="nav-item${publicacionActive ? ' active' : ''}" href="/#cola" data-view="publicacion">\ud83d\udce4 Publicación</a>
+      <div style="padding:14px 20px 0">
+        <a href="/terminos-datos" target="_blank" style="font-size:11px;color:#999">Términos y condiciones de datos</a>
+      </div>
+      <div style="margin-top:auto;padding:20px">
+        <a href="/logout" title="Cerrar sesión" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f45c5c,#e02424);text-decoration:none;box-shadow:0 2px 6px rgba(224,36,36,0.35)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+            <line x1="12" y1="2" x2="12" y2="12"></line>
+          </svg>
+        </a>
+      </div>
     </div>
   </div>`;
 }
@@ -108,12 +113,17 @@ function renderSeoPanel() {
     .modal-box{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
     .modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
 
+    .sidebar-toggle{display:none}
     @media (max-width:768px){
       .layout{flex-direction:column}
-      .sidebar{width:100%;height:auto;position:relative;top:auto;flex-direction:row;flex-wrap:wrap;padding:10px;overflow-x:auto}
-      .sidebar h1{padding:6px 10px;font-size:14px;width:100%}
-      .nav-item{padding:8px 12px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
-      .nav-item.active{border-left-color:transparent;border-bottom-color:#216416}
+      .sidebar{width:100%;height:auto;position:relative;top:auto;flex-direction:column;padding:0;overflow:visible}
+      .sidebar-top{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;width:100%}
+      .sidebar-top h1{padding:0;font-size:15px}
+      .sidebar-toggle{display:block;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#216416;padding:4px 8px}
+      .sidebar-nav{display:none;flex-direction:column;width:100%;border-top:1px solid #eee}
+      .sidebar.mobile-open .sidebar-nav{display:flex}
+      .nav-item{padding:12px 16px;border-left:none;border-bottom:1px solid #f0f0f0;white-space:nowrap}
+      .nav-item.active{border-left-color:transparent}
       .main{padding:16px;max-width:100%}
       .grid3{grid-template-columns:1fr}
       .grid2{grid-template-columns:1fr}

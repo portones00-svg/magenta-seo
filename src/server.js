@@ -224,12 +224,17 @@ app.get('/', (req, res) => {
     .progress-fill{height:100%;background:#216416;border-radius:2px;transition:width 0.5s}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 
+    .sidebar-toggle{display:none}
     @media (max-width:768px){
       .layout{flex-direction:column}
-      .sidebar{width:100%;height:auto;position:relative;top:auto;flex-direction:row;flex-wrap:wrap;padding:10px;overflow-x:auto}
-      .sidebar h1{padding:6px 10px;font-size:14px;width:100%}
-      .nav-item{padding:8px 12px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
-      .nav-item.active{border-left-color:transparent;border-bottom-color:#216416}
+      .sidebar{width:100%;height:auto;position:relative;top:auto;flex-direction:column;padding:0;overflow:visible}
+      .sidebar-top{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;width:100%}
+      .sidebar-top h1{padding:0;font-size:15px}
+      .sidebar-toggle{display:block;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#216416;padding:4px 8px}
+      .sidebar-nav{display:none;flex-direction:column;width:100%;border-top:1px solid #eee}
+      .sidebar.mobile-open .sidebar-nav{display:flex}
+      .nav-item{padding:12px 16px;border-left:none;border-bottom:1px solid #f0f0f0;white-space:nowrap}
+      .nav-item.active{border-left-color:transparent}
       .main{padding:16px;max-width:100%}
       .grid3{grid-template-columns:1fr}
       .grid2{grid-template-columns:1fr}
