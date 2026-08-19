@@ -108,3 +108,27 @@ ALTER TABLE historial_ciclos ALTER COLUMN items DROP NOT NULL;
 ALTER TABLE historial_ciclos ADD COLUMN IF NOT EXISTS articulos_count INTEGER;
 ALTER TABLE historial_ciclos ADD COLUMN IF NOT EXISTS total_clics_base NUMERIC;
 ALTER TABLE historial_ciclos ADD COLUMN IF NOT EXISTS paginas_base JSONB;
+
+-- Ajuste (2026-08-19): cola_articulos necesita error_msg para cuando el cron
+-- de publicacion falla (usado por actualizarItem con estado 'error').
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS error_msg TEXT;
+
+-- Ajuste (2026-08-19): cola_articulos en realidad guarda muchos mas campos
+-- variables (meta, contenido, isoDate, dateStr, imagen, generando, imagenLista,
+-- errorGeneracion, publicadoEn, etc). En vez de perseguir cada campo con su
+-- columna, se guardan en "data" JSONB y se fusionan como el objeto JS original.
+-- Las columnas reales quedan solo para lo que se filtra/ordena de verdad.
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}'::jsonb;
+
+-- Ajuste (2026-08-19, v2): columnas explicitas para escalar mejor a largo plazo,
+-- en vez de un blob JSONB generico. meta/imagen quedan JSONB porque son objetos
+-- anidados por naturaleza (titulo/slug/descripcion; url/alt), no por pereza.
+ALTER TABLE cola_articulos DROP COLUMN IF EXISTS data;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS meta JSONB;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS imagen JSONB;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS iso_date TEXT;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS date_str TEXT;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS publicado_en TIMESTAMPTZ;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS generando BOOLEAN DEFAULT false;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS imagen_lista BOOLEAN;
+ALTER TABLE cola_articulos ADD COLUMN IF NOT EXISTS error_generacion TEXT;

@@ -11,7 +11,7 @@ const { testConexion } = require('./publisher');
 const {
   agregarACola, obtenerCola, obtenerItemPorId,
   actualizarItem, eliminarItem, obtenerItemsParaHoy,
-  obtenerCalendarioMes, guardarCola
+  obtenerCalendarioMes
 } = require('./scheduler');
 
 const session = require('express-session');
@@ -97,8 +97,8 @@ const KW_SUGERIDAS = [
 ];
 
 // ─── HELPERS HTML ─────────────────────────────────────────────────────────────
-function renderCalendario(año, mes) {
-  const itemsMes = obtenerCalendarioMes(año, mes);
+async function renderCalendario(año, mes) {
+  const itemsMes = await obtenerCalendarioMes(año, mes);
   const diasEnMes = new Date(año, mes, 0).getDate();
   const primerDia = new Date(año, mes - 1, 1).getDay();
   const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -142,14 +142,14 @@ function renderCalendario(año, mes) {
 }
 
 // ─── PANEL PRINCIPAL ──────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   const ahora = new Date();
   const año = parseInt(req.query.año || ahora.getFullYear());
   const mes = parseInt(req.query.mes || ahora.getMonth() + 1);
   const verTodo = req.query.verTodo === '1';
   const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-  const cola = obtenerCola();
+  const cola = await obtenerCola();
   const pendientes = cola.filter(i => i.estado === 'pendiente').length;
   const aprobados = cola.filter(i => i.estado === 'aprobado').length;
   const publicados = cola.filter(i => i.estado === 'publicado').length;
@@ -273,7 +273,7 @@ app.get('/', (req, res) => {
       <span class="cal-title">${nombresMes[mes]} ${año}</span>
       <a href="/?mes=${mes === 12 ? 1 : mes + 1}&año=${mes === 12 ? año + 1 : año}" class="btn btn-secondary" style="text-decoration:none">Siguiente →</a>
     </div>
-    ${renderCalendario(año, mes)}
+    ${await renderCalendario(año, mes)}
     <p style="font-size:11px;color:#999;margin-top:8px">Click en un día para agregar o ver el artículo programado</p>
   </div>
 
@@ -328,7 +328,7 @@ app.get('/', (req, res) => {
   <!-- COLA DE ARTÍCULOS -->
   <div class="card" id="cola">
     <div class="card-title">📋 Cola de publicaciones</div>
-    <div id="colaContainer">${renderCola(año, mes, verTodo)}${verTodo ? '<p style="font-size:12px;margin-top:8px"><a href="?año='+año+'&mes='+mes+'" style="color:#216416">← Ver solo este mes</a></p>' : ''}</div>
+    <div id="colaContainer">${await renderCola(año, mes, verTodo)}${verTodo ? '<p style="font-size:12px;margin-top:8px"><a href="?año='+año+'&mes='+mes+'" style="color:#216416">← Ver solo este mes</a></p>' : ''}</div>
   </div>
 
   <!-- HISTORIAL -->
@@ -645,9 +645,9 @@ function showStatus(id, type, msg) {
 });
 
 // Helper para renderizar la cola
-function renderCola(año, mes, verTodo) {
+async function renderCola(año, mes, verTodo) {
   const prefijoMes = año && mes ? `${año}-${String(mes).padStart(2,'0')}` : null;
-  let cola = obtenerCola().sort((a,b) => (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
+  let cola = (await obtenerCola()).sort((a,b) => (a.fechaProgramada||'').localeCompare(b.fechaProgramada||''));
   if (prefijoMes && !verTodo) {
     cola = cola.filter(i => (i.fechaProgramada || '').startsWith(prefijoMes));
   }
@@ -701,7 +701,7 @@ app.post('/generar-para-cola', async (req, res) => {
     const canonical = SITE_URL + '/' + carpeta + '/' + meta.slug + '/';
     const imagen = await generarYSubirImagen({ tema, marca, slug: meta.slug });
 
-    const id = agregarACola({
+    const id = await agregarACola({
       tema, marca, carpeta, fechaProgramada, meta, contenido,
       isoDate, dateStr, canonical, imagen, estado: 'pendiente'
     });
@@ -718,7 +718,7 @@ app.post('/generar-para-cola', async (req, res) => {
 // Publica manualmente un item ahora mismo (sin esperar el cron de las 10am) - para pruebas
 app.post('/item/:id/publicar-ahora', async (req, res) => {
   try {
-    const item = obtenerItemPorId(req.params.id);
+    const item = await obtenerItemPorId(req.params.id);
     if (!item) return res.json({ ok: false, error: 'No encontrado' });
     if (!item.meta || !item.contenido) return res.json({ ok: false, error: 'Este item aun no tiene contenido generado. Dale Ver o Regenerar primero.' });
 
@@ -739,7 +739,7 @@ app.post('/item/:id/publicar-ahora', async (req, res) => {
 
     await publicarArticulo({ slug: item.meta.slug, carpeta: item.carpeta, htmlContent: htmlCompleto });
     await actualizarSitemap({ canonical: item.canonical });
-    const itemPublicado = actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+    const itemPublicado = await actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
     await agregarABlogIndex(itemPublicado);
 
     historial.push({
@@ -757,7 +757,7 @@ app.post('/item/:id/publicar-ahora', async (req, res) => {
 
 app.post('/item/:id/regenerar', async (req, res) => {
   try {
-    const item = obtenerItemPorId(req.params.id);
+    const item = await obtenerItemPorId(req.params.id);
     if (!item) return res.json({ ok: false, error: 'No encontrado' });
 
     console.log('[REGENERAR] Forzando regeneracion:', item.tema);
@@ -767,7 +767,7 @@ app.post('/item/:id/regenerar', async (req, res) => {
     const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
     const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
 
-    const itemActualizado = actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen });
+    const itemActualizado = await actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen });
     res.json({ ok: true, item: itemActualizado });
   } catch(err) {
     console.error('[REGENERAR] Error:', err.message);
@@ -784,25 +784,25 @@ async function generarContenidoEnSegundoPlano(item) {
     const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
 
     // Guardar el texto apenas esta listo, para que se pueda mostrar sin esperar la imagen
-    actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagenLista: false });
+    await actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagenLista: false });
     console.log('[VER-PREVIEW-BG] \u2705 Texto listo, generando imagen:', item.tema);
 
     const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
-    actualizarItem(item.id, { imagen, imagenLista: true, generando: false, estado: 'generado' });
+    await actualizarItem(item.id, { imagen, imagenLista: true, generando: false, estado: 'generado' });
     console.log('[VER-PREVIEW-BG] \u2705 Imagen lista:', item.tema);
   } catch(err) {
     console.error('[VER-PREVIEW-BG] Error:', err.message);
-    actualizarItem(item.id, { generando: false, errorGeneracion: err.message });
+    await actualizarItem(item.id, { generando: false, errorGeneracion: err.message });
   }
 }
 
 app.get('/item/:id', async (req, res) => {
-  let item = obtenerItemPorId(req.params.id);
+  let item = await obtenerItemPorId(req.params.id);
   if (!item) return res.json({ ok: false, error: 'No encontrado' });
 
   // Si es un item automatico de Estrategia y aun no tiene contenido ni esta ya generando, lanzarlo en segundo plano
   if (item.estado === 'pendiente_auto' && !item.contenido && !item.generando) {
-    item = actualizarItem(item.id, { generando: true, errorGeneracion: null });
+    item = await actualizarItem(item.id, { generando: true, errorGeneracion: null });
     generarContenidoEnSegundoPlano(item); // sin await, corre en segundo plano
   }
 
@@ -810,21 +810,21 @@ app.get('/item/:id', async (req, res) => {
 });
 
 // Aprobar item
-app.post('/aprobar/:id', (req, res) => {
-  const item = actualizarItem(req.params.id, { estado: 'aprobado' });
+app.post('/aprobar/:id', async (req, res) => {
+  const item = await actualizarItem(req.params.id, { estado: 'aprobado' });
   if (!item) return res.json({ ok: false, error: 'No encontrado' });
   res.json({ ok: true, fechaProgramada: item.fechaProgramada });
 });
 
 // Descartar item
-app.delete('/descartar/:id', (req, res) => {
-  eliminarItem(req.params.id);
+app.delete('/descartar/:id', async (req, res) => {
+  await eliminarItem(req.params.id);
   res.json({ ok: true });
 });
 
 // Ver items de un día
-app.get('/dia/:fecha', (req, res) => {
-  const cola = obtenerCola();
+app.get('/dia/:fecha', async (req, res) => {
+  const cola = await obtenerCola();
   const item = cola.find(i => i.fechaProgramada === req.params.fecha);
   res.json({ ok: true, item: item || null });
 });
@@ -852,13 +852,13 @@ app.get('/test-sftp', async (req, res) => {
   res.json({ ok });
 });
 
-app.get('/health', (req, res) => res.json({ ok: true, uptime: process.uptime(), cola: obtenerCola().length }));
+app.get('/health', async (req, res) => res.json({ ok: true, uptime: process.uptime(), cola: (await obtenerCola()).length }));
 
 // ─── CRON: publicar artículo del día a las 7am Chile (10am UTC) ───────────────
 cron.schedule('0 9 * * *', async () => {
   console.log('[CRON-AUTO] Generando articulos automaticos de Estrategia para hoy...');
   const hoyAuto = new Date().toISOString().split('T')[0];
-  const colaAuto = obtenerCola();
+  const colaAuto = await obtenerCola();
   const pendientesAuto = colaAuto.filter(i => i.fechaProgramada === hoyAuto && (i.estado === 'pendiente_auto' || i.estado === 'generado' || (i.estado === 'aprobado' && !i.contenido)));
 
   if (!pendientesAuto.length) {
@@ -869,7 +869,7 @@ cron.schedule('0 9 * * *', async () => {
     try {
       if (item.contenido && item.meta) {
         console.log('[CRON-AUTO] Ya estaba generado (revisado antes con Ver), solo aprobando:', item.tema);
-        actualizarItem(item.id, { estado: 'aprobado' });
+        await actualizarItem(item.id, { estado: 'aprobado' });
       } else {
         console.log('[CRON-AUTO] Generando:', item.tema);
         const meta = await generarMetadata({ tema: item.tema, marca: item.marca, tipo: 'articulo' });
@@ -877,19 +877,19 @@ cron.schedule('0 9 * * *', async () => {
         const { isoDate, dateStr } = buildDate(0);
         const canonical = SITE_URL + '/' + item.carpeta + '/' + meta.slug + '/';
         const imagen = await generarYSubirImagen({ tema: item.tema, marca: item.marca, slug: meta.slug });
-        actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, estado: 'aprobado' });
+        await actualizarItem(item.id, { meta, contenido, isoDate, dateStr, canonical, imagen, estado: 'aprobado' });
       }
       console.log('[CRON-AUTO] \u2705 Aprobado, listo para publicar a las 10am:', item.tema);
     } catch(err) {
       console.error('[CRON-AUTO] \u274c Error generando', item.tema, ':', err.message);
-      actualizarItem(item.id, { estado: 'error', errorMsg: err.message });
+      await actualizarItem(item.id, { estado: 'error', errorMsg: err.message });
     }
   }
 });
 
 cron.schedule('0 10 * * *', async () => {
   console.log('[CRON] Revisando artículos para hoy...');
-  const items = obtenerItemsParaHoy();
+  const items = await obtenerItemsParaHoy();
 
   if (!items.length) {
     console.log('[CRON] Sin artículos programados para hoy');
@@ -915,7 +915,7 @@ cron.schedule('0 10 * * *', async () => {
 
       await publicarArticulo({ slug: item.meta.slug, carpeta: item.carpeta, htmlContent: htmlCompleto });
       await actualizarSitemap({ canonical: item.canonical });
-      const itemPublicadoManual = actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
+      const itemPublicadoManual = await actualizarItem(item.id, { estado: 'publicado', publicadoEn: new Date().toISOString() });
       await agregarABlogIndex(itemPublicadoManual);
 
       historial.push({
@@ -927,7 +927,7 @@ cron.schedule('0 10 * * *', async () => {
       console.log('[CRON] ✅ Publicado:', item.canonical);
     } catch(err) {
       console.error('[CRON] ❌ Error publicando', item.tema, ':', err.message);
-      actualizarItem(item.id, { estado: 'error', errorMsg: err.message });
+      await actualizarItem(item.id, { estado: 'error', errorMsg: err.message });
     }
   }
 });
@@ -1201,7 +1201,7 @@ async function generarPlanAutomatico(prioridades = []) {
   });
 
   // Nunca repetir literalmente un tema ya usado en cualquier ciclo anterior (evita contenido duplicado).
-  const temasYaUsadosHistorico = new Set(obtenerCola().map(item => item.tema));
+  const temasYaUsadosHistorico = new Set((await obtenerCola()).map(item => item.tema));
   const todosLosUsados = new Set([...temasYaUsadosHistorico, ...yaUsados]);
 
   // El resto del plan se genera con IA en el momento, considerando lo que ya existe - no hay lista fija.
@@ -1317,40 +1317,21 @@ app.post('/seo/registrar-aplicado-manual', (req, res) => {
 
 // Ruta de una sola vez: repara items de Estrategia que quedaron mal etiquetados por el bug de id duplicado
 // Ruta de una sola vez: reasigna un id unico de verdad a cada item de la cola (arregla colisiones viejas)
-app.post('/seo/reparar-ids-duplicados', (req, res) => {
-  try {
-    const cola = obtenerCola();
-    let cambiados = 0;
-    const idsUsados = new Set();
-    const colaArreglada = cola.map((item, idx) => {
-      if (idsUsados.has(item.id)) {
-        const nuevoId = Date.now().toString() + '-' + idx + '-' + Math.random().toString(36).slice(2, 8);
-        idsUsados.add(nuevoId);
-        cambiados++;
-        return { ...item, id: nuevoId };
-      }
-      idsUsados.add(item.id);
-      return item;
-    });
-    guardarCola(colaArreglada);
-    res.json({ ok: true, cambiados, total: cola.length });
-  } catch(err) {
-    res.json({ ok: false, error: err.message });
-  }
+app.post('/seo/reparar-ids-duplicados', async (req, res) => {
+  // Ya no aplica: con Postgres los ids son autoincrementales, nunca pueden duplicarse.
+  res.json({ ok: true, cambiados: 0, total: (await obtenerCola()).length, nota: 'Postgres ya garantiza ids unicos, esta ruta quedo obsoleta' });
 });
 
-app.post('/seo/reparar-cola-estrategia', (req, res) => {
+app.post('/seo/reparar-cola-estrategia', async (req, res) => {
   try {
-    const cola = obtenerCola();
+    const cola = await obtenerCola();
     let arreglados = 0;
-    const colaArreglada = cola.map(item => {
+    for (const item of cola) {
       if (item.estado === 'pendiente' && item.hasOwnProperty('enlazarA') && !item.contenido) {
+        await actualizarItem(item.id, { estado: 'pendiente_auto' });
         arreglados++;
-        return { ...item, estado: 'pendiente_auto' };
       }
-      return item;
-    });
-    guardarCola(colaArreglada);
+    }
     res.json({ ok: true, arreglados });
   } catch(err) {
     res.json({ ok: false, error: err.message });
@@ -1545,8 +1526,8 @@ app.post('/seo/estrategia', async (req, res) => {
     });
 
     // Empujar cada articulo del plan a la cola como pendiente automatico (sin generar contenido aun)
-    items.forEach(item => {
-      agregarACola({
+    for (const item of items) {
+      await agregarACola({
         tema: item.tema,
         marca: item.marca || '',
         carpeta: item.carpeta || 'blog',
@@ -1554,7 +1535,7 @@ app.post('/seo/estrategia', async (req, res) => {
         enlazarA: item.enlazarA || null,
         estado: 'pendiente_auto',
       });
-    });
+    }
 
     res.json({ ok: true, data });
   } catch(err) {

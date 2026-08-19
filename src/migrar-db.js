@@ -109,32 +109,41 @@ async function ejecutarMigracion() {
     resultado.pasos.push(`Limpiadas ${limpieza.rows.length} filas basura del primer intento (ids: ${limpieza.rows.map(r => r.id).join(', ')})`);
   }
 
-  // 6) Migrar cola (solo si esta vacia para este sitio, para no duplicar articulos)
-  const colaExistente = await query('SELECT id FROM cola_articulos WHERE sitio_id = $1 LIMIT 1', [sitioId]);
-  if (colaExistente.rows.length === 0) {
-    const cola = leerJsonPlano('magenta-seo-cola.json', []);
-    for (const item of cola) {
-      await query(
-        `INSERT INTO cola_articulos (sitio_id, tema, marca, carpeta, fecha_programada, estado, contenido_html, canonical, enlazar_a, enlazar_potencial)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [
-          sitioId,
-          item.tema || '',
-          item.marca || null,
-          item.carpeta || 'blog',
-          item.fechaProgramada || null,
-          item.estado || 'pendiente',
-          item.contenidoHtml || item.html || null,
-          item.canonical || null,
-          item.enlazarA || null,
-          item.enlazarPotencial || null
-        ]
-      );
-    }
-    resultado.pasos.push(`Cola migrada (${cola.length} articulos)`);
-  } else {
-    resultado.pasos.push('Cola ya estaba migrada, se omite (para no duplicar)');
+  // 6) Migrar cola: se borra y re-inserta completa cada vez (todavia no hay nada
+  // en produccion leyendo de esta tabla, asi que resincronizar full es seguro y
+  // evita quedar con columnas nuevas vacias por una migracion parcial anterior).
+  await query('DELETE FROM cola_articulos WHERE sitio_id = $1', [sitioId]);
+  const cola = leerJsonPlano('magenta-seo-cola.json', []);
+  for (const item of cola) {
+    await query(
+      `INSERT INTO cola_articulos
+        (sitio_id, tema, marca, carpeta, fecha_programada, estado, contenido_html, canonical,
+         enlazar_a, enlazar_potencial, error_msg, meta, imagen, iso_date, date_str, publicado_en, generando, imagen_lista, error_generacion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+      [
+        sitioId,
+        item.tema || '',
+        item.marca || null,
+        item.carpeta || 'blog',
+        item.fechaProgramada || null,
+        item.estado || 'pendiente',
+        item.contenido || item.contenidoHtml || item.html || null,
+        item.canonical || null,
+        item.enlazarA || null,
+        item.enlazarPotencial || null,
+        item.errorMsg || null,
+        item.meta ? JSON.stringify(item.meta) : null,
+        item.imagen ? JSON.stringify(item.imagen) : null,
+        item.isoDate || null,
+        item.dateStr || null,
+        item.publicadoEn || null,
+        item.generando || false,
+        item.imagenLista === undefined ? null : item.imagenLista,
+        item.errorGeneracion || null,
+      ]
+    );
   }
+  resultado.pasos.push(`Cola re-migrada completa (${cola.length} articulos)`);
 
   resultado.cuentaId = cuentaId;
   resultado.sitioId = sitioId;
