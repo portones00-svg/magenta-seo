@@ -102,7 +102,6 @@ function renderCalendario(año, mes) {
   const diasEnMes = new Date(año, mes, 0).getDate();
   const primerDia = new Date(año, mes - 1, 1).getDay();
   const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const verTodo = req.query.verTodo === '1';
   const hoy = new Date().toISOString().split('T')[0];
 
   let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px">`;
@@ -147,6 +146,7 @@ app.get('/', (req, res) => {
   const ahora = new Date();
   const año = parseInt(req.query.año || ahora.getFullYear());
   const mes = parseInt(req.query.mes || ahora.getMonth() + 1);
+  const verTodo = req.query.verTodo === '1';
   const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
   const cola = obtenerCola();
