@@ -107,6 +107,25 @@ function renderSeoPanel() {
     .modal.open{display:flex}
     .modal-box{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
     .modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
+
+    @media (max-width:768px){
+      .layout{flex-direction:column}
+      .sidebar{width:100%;height:auto;position:relative;top:auto;flex-direction:row;flex-wrap:wrap;padding:10px;overflow-x:auto}
+      .sidebar h1{padding:6px 10px;font-size:14px;width:100%}
+      .nav-item{padding:8px 12px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
+      .nav-item.active{border-left-color:transparent;border-bottom-color:#216416}
+      .main{padding:16px;max-width:100%}
+      .grid3{grid-template-columns:1fr}
+      .grid2{grid-template-columns:1fr}
+      .filters-row{flex-direction:column;align-items:stretch}
+      .filters-row input,.filters-row select{width:100%;margin-left:0!important}
+      input[style*="width"],select[style*="width"]{width:100%!important}
+      .card{padding:14px;overflow-x:auto}
+      table{min-width:560px}
+      .cal-nav{flex-wrap:wrap;gap:8px}
+      .cal-title{font-size:14px}
+      .modal-box{padding:16px;width:94%}
+    }
   </style>
 </head>
 <body>

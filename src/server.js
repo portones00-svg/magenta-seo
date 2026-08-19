@@ -223,6 +223,25 @@ app.get('/', (req, res) => {
     .progress{height:4px;background:#e5e5e5;border-radius:2px;overflow:hidden;display:none;margin:10px 0}
     .progress-fill{height:100%;background:#216416;border-radius:2px;transition:width 0.5s}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+
+    @media (max-width:768px){
+      .layout{flex-direction:column}
+      .sidebar{width:100%;height:auto;position:relative;top:auto;flex-direction:row;flex-wrap:wrap;padding:10px;overflow-x:auto}
+      .sidebar h1{padding:6px 10px;font-size:14px;width:100%}
+      .nav-item{padding:8px 12px;border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
+      .nav-item.active{border-left-color:transparent;border-bottom-color:#216416}
+      .main{padding:16px;max-width:100%}
+      .grid3{grid-template-columns:1fr}
+      .grid2{grid-template-columns:1fr}
+      .filters-row{flex-direction:column;align-items:stretch}
+      .filters-row input,.filters-row select{width:100%;margin-left:0!important}
+      input[style*="width"],select[style*="width"]{width:100%!important}
+      .card{padding:14px;overflow-x:auto}
+      table{min-width:560px}
+      .cal-nav{flex-wrap:wrap;gap:8px}
+      .cal-title{font-size:14px}
+      .modal-box{padding:16px;width:94%}
+    }
   </style>
 </head>
 <body>
