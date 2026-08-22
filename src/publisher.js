@@ -6,7 +6,8 @@ const FTP_CONFIG = {
   user: process.env.SFTP_USER,
   password: process.env.SFTP_PASS,
   port: 21,
-  secure: false,
+  secure: true, // Bluehost ahora exige TLS - FTP plano (secure:false) es rechazado con error 421
+  secureOptions: { rejectUnauthorized: false }, // certificado de Bluehost puede no validar en la cadena estandar
 };
 
 // Ruta relativa desde el home del usuario FTP
